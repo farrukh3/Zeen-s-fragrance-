@@ -100,7 +100,7 @@ function draw(){
   $('#app').innerHTML=`<div class="top"><span>${D.settings.logo?`<img src="/api/img/${D.settings.logo}" style="height:34px;width:34px;object-fit:contain;border-radius:50%;vertical-align:middle;margin-right:8px">`:''}<b>Zeen's Admin</b></span><div class="tabs">${tabs.map(([k,v])=>`<button class="tab ${k===tab?'on':''}" data-t="${k}">${v}${k==='ord'&&pending?` (${pending})`:''}</button>`).join('')}</div>
   <span><a class="btn g s" href="/" target="_blank" style="text-decoration:none;display:inline-block">View Shop</a> <button class="btn g s" id="lo">Logout</button></span></div><main id="main"></main>`;
   $('#lo').onclick=async()=>{await api('admin/logout','POST');D=null;showLogin()};
-  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{tab=b.dataset.t;draw()});
+  document.querySelectorAll('.tab').forEach(b=>b.onclick=async()=>{tab=b.dataset.t;await load()});
   ({dash,sell,prod,ord,acc,off,set}[tab])();
 }
 const M=h=>$('#main').innerHTML=h;
@@ -153,12 +153,13 @@ function pform(p){
   <label>Description<textarea id="f_desc" rows="3">${esc(e.description)}</textarea></label>
   <div class="g3"><label>Top notes (comma separated)<input id="f_top" value="${esc(e.notes.top.join(', '))}"></label><label>Heart notes<input id="f_heart" value="${esc(e.notes.heart.join(', '))}"></label><label>Base notes<input id="f_base" value="${esc(e.notes.base.join(', '))}"></label></div>
   <div><div class="mut" style="margin-bottom:6px;font-size:12px">Photos (first photo is the main one, max 4)</div><div class="imgs" id="f_imgs"></div></div>
-  <div><div class="mut" style="margin-bottom:6px;font-size:12px">Sizes — selling price, your cost price (for profit), discount % and stock</div><div id="f_vars" style="display:grid;gap:8px"></div><button class="btn g s" id="addv" style="margin-top:8px">+ Add size</button></div>
+  <div><div class="mut" style="margin-bottom:6px;font-size:12px">Sizes — selling price, your cost price (for profit), discount % and stock</div><div id="f_vars" style="display:grid;gap:8px"></div><button class="btn g s" id="addv" style="margin-top:8px">+ Add size</button> <button class="btn g s" id="addt" style="margin-top:8px">+ Add 10ml Tester</button></div>
   <div class="er" id="f_er"></div>
   <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn g" id="cancel">Cancel</button><button class="btn" id="save">Save Product</button></div>`;
   drawImgs();drawVars();$('#ov').classList.add('on');
   $('#cancel').onclick=()=>$('#ov').classList.remove('on');
   $('#addv').onclick=()=>{readVars();e.variants.push({size:'',price:0,cost:0,discount:0,stock:0});drawVars()};
+  $('#addt').onclick=()=>{readVars();if(!e.variants.some(v=>/tester/i.test(v.size)))e.variants.push({size:'10ml Tester',price:0,cost:0,discount:0,stock:0});drawVars()};
   $('#save').onclick=async()=>{
     readVars();
     const body={id:e.id,name:$('#f_name').value,brand:$('#f_brand').value,category:$('#f_cat').value,badge:$('#f_badge').value,featured:$('#f_feat').checked,active:$('#f_act').checked,
@@ -192,14 +193,15 @@ function ordTable(list,ctl=true){
    <td>${new Date(o.createdAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
    <td>${esc(o.customer.name)}<br><span class="mut">${esc(o.customer.phone)}</span>${o.customer.address?`<br><span class="mut">${esc(o.customer.address)}, ${esc(o.customer.city)}</span>`:''}${o.customer.note?`<br><i class="mut">${esc(o.customer.note)}</i>`:''}</td>
    <td>${o.lines.map(l=>`${esc(l.name)} ${esc(l.size)} ×${l.qty}`).join('<br>')}</td>
-   <td>${rs(o.total)}<br><span class="mut">${esc(o.payment)}${o.coupon?' · '+esc(o.coupon):''}</span></td>
+   <td>${rs(o.total)}<br><span class="mut">${esc(o.payment)}${o.coupon?' · '+esc(o.coupon):''}${o.paymentRef?'<br>Txn: '+esc(o.paymentRef):''}</span>${o.source!=='store'&&o.status!=='cancelled'&&o.payment!=='COD'?(o.paid?'<br><span class="pill delivered">Paid</span>':`<br><span class="pill pending">Unpaid</span> <button class="btn g s" data-mp="${o.id}">Mark paid</button>`):''}</td>
    <td>${ctl&&o.status!=='cancelled'?`<select data-o="${o.id}">${['pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>`:`<span class="pill ${o.status}">${o.status}</span>`}</td><td style="white-space:nowrap"><a class="btn g s" style="text-decoration:none;display:inline-block" target="_blank" href="${invUrl(o)}">Invoice</a> <a class="btn g s" style="text-decoration:none;display:inline-block" target="_blank" href="${invUrl(o)}&slip=1">Slip</a> <button class="btn g s" data-wa="${o.id}">WhatsApp</button></td></tr>`).join('')}</tbody></table>`;
 }
 function ord(){
   const list=D.orders.filter(o=>oFilter==='all'||o.status===oFilter);
   M(`<h2>Orders</h2><div class="bar"><select id="of">${['all','pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${oFilter===s?'selected':''}>${s}</option>`).join('')}</select><span class="mut">Cancelling an order puts its stock back automatically.</span></div><div class="panel">${ordTable(list)}</div>`);
   $('#of').onchange=e=>{oFilter=e.target.value;ord()};
-  $('#main').onclick=e=>{const w=e.target.closest('[data-wa]');if(w)waOrder(D.orders.find(x=>x.id===w.dataset.wa))};
+  $('#main').onclick=async e=>{const w=e.target.closest('[data-wa]');if(w)return waOrder(D.orders.find(x=>x.id===w.dataset.wa));
+    const m=e.target.closest('[data-mp]');if(m){try{await api('admin/order/'+m.dataset.mp+'/paid','POST',{paid:true});toast('Marked as paid');await load()}catch(x){toast(x.message,1)}}};
   $('#main').onchange=async e=>{const s=e.target.closest('[data-o]');if(!s)return;
     if(s.value==='cancelled'&&!confirm('Cancel this order and return stock?')){return ord()}
     try{await api('admin/order/'+s.dataset.o,'POST',{status:s.value});toast('Updated');await load()}catch(x){toast(x.message,1)}};
@@ -225,7 +227,7 @@ function drawBill(){
    <div class="row"><span>Subtotal</span><span>${rs(sub)}</span></div>
    <label style="margin:6px 0">Extra discount (Rs.)<input id="bd" type="number" min="0" value="${window._bd||0}"></label>
    <div class="g2"><label>Customer name<input id="bn" placeholder="Walk-in"></label><label>Phone<input id="bp"></label></div>
-   <label style="margin:6px 0">Payment<select id="bpm"><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>JazzCash/Easypaisa</option></select></label>
+   <label style="margin:6px 0">Payment<select id="bpm"><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>Easypaisa</option><option>JazzCash</option></select></label>
    <div class="row t"><span>Total</span><span id="bt">${rs(sub-(window._bd||0))}</span></div>
    <button class="btn" id="bs" style="width:100%;margin-top:8px">Complete Sale</button> <button class="btn g" id="bc" style="width:100%;margin-top:6px">Clear</button>`:'<span class="mut">Tap a size to add it to the bill.</span>';
   const d=$('#bd');if(d)d.oninput=()=>{window._bd=Math.max(0,+d.value||0);$('#bt').textContent=rs(Math.max(0,sub-window._bd))};
@@ -375,7 +377,8 @@ function acc(){
    ${kpi('Gross profit',rs(A.profit),`Margin ${A.rev?(A.profit/A.rev*100).toFixed(1):0}%`,A.profit>=0?'grn':'red')}
    ${kpi('Expenses',rs(exTot),`${exR.length} entries`)}
    ${kpi('NET PROFIT',rs(net),'profit minus expenses',net>=0?'grn':'red')}
-   ${kpi('Delivery collected',rs(A.delivery),'not counted in profit')}</div>
+   ${kpi('Delivery collected',rs(A.delivery),'not counted in profit')}
+   ${kpi('Online payments pending',rs(L.filter(o=>o.source!=='store'&&o.payment!=='COD'&&!o.paid).reduce((a,o)=>a+o.total,0)),'not yet marked paid','red')}</div>
   ${noCost?`<div class="panel" style="border-color:var(--red)">⚠ ${noCost} order(s) have perfumes without a <b>cost price</b>, so profit looks higher than real. Open <b>Products &gt; Edit</b> and fill "Cost (Rs.)" for every size.</div>`:''}
   <div class="g2"><div class="panel"><h2 style="font-size:20px">Monthly sales & profit (last 12 months)</h2><div class="lg"><i style="background:var(--gold)"></i>Sales <i style="background:#4fbf78"></i>Profit</div>${barChart(mLab,[{name:'Sales',color:'#c9a24b',values:mRev.map(x=>x.rev)},{name:'Profit',color:'#4fbf78',values:mRev.map(x=>x.profit)}])}</div>
   <div class="panel"><h2 style="font-size:20px">Yearly sales & profit</h2><div class="lg"><i style="background:var(--gold)"></i>Sales <i style="background:#4fbf78"></i>Profit</div>${barChart(years.map(String),[{name:'Sales',color:'#c9a24b',values:yAgg.map(x=>x.rev)},{name:'Profit',color:'#4fbf78',values:yAgg.map(x=>x.profit)}])}</div></div>
@@ -452,22 +455,46 @@ function designInit(){
       const r=await api('admin/image','POST',{dataUrl});dsn[k]=r.id;draw()}catch(x){toast(x.message,1)}};
 }
 
+// ---------- payment methods ----------
+function payHtml(){
+  const P=D.settings.payments||{},b=P.bank||{},e=P.easypaisa||{},j=P.jazzcash||{};
+  const chk=(id,v,l)=>`<label style="display:flex;align-items:center;gap:8px;color:var(--ink);font-size:14px"><input type="checkbox" id="${id}" ${v?'checked':''} style="width:auto">${l}</label>`;
+  const inp=(id,l,v)=>`<label>${l}<input id="${id}" value="${esc(v||'')}"></label>`;
+  return `<div class="panel" id="paybox" style="display:grid;gap:14px"><h2 style="font-size:20px;margin:0">Payment Methods & Account Numbers</h2>
+  <div class="mut">Customers pick <b>COD</b> or <b>Online</b> at checkout. The account details you enter here are shown to them. A method is switched on only when its number is filled.</div>
+  ${chk('pay_cod',P.cod?P.cod.enabled!==false:true,'Cash on Delivery (COD)')}
+  <div class="panel" style="margin:0;display:grid;gap:10px"><b>Bank Account</b>${chk('pay_bank_on',b.enabled,'Show to customers')}<div class="g3">${inp('pay_bank_name','Bank name',b.bankName)}${inp('pay_bank_title','Account title',b.title)}${inp('pay_bank_num','Account number / IBAN',b.number)}</div></div>
+  <div class="panel" style="margin:0;display:grid;gap:10px"><b>Easypaisa</b>${chk('pay_ep_on',e.enabled,'Show to customers')}<div class="g2">${inp('pay_ep_title','Account title',e.title)}${inp('pay_ep_num','Easypaisa number',e.number)}</div></div>
+  <div class="panel" style="margin:0;display:grid;gap:10px"><b>JazzCash</b>${chk('pay_jc_on',j.enabled,'Show to customers')}<div class="g2">${inp('pay_jc_title','Account title',j.title)}${inp('pay_jc_num','JazzCash number',j.number)}</div></div>
+  <div><button class="btn" id="paysave">Save Payment Settings</button></div></div>`;
+}
+function payInit(){
+  $('#paysave').onclick=async()=>{const g=id=>$('#'+id).value;
+    const payments={cod:{enabled:$('#pay_cod').checked},
+      bank:{enabled:$('#pay_bank_on').checked,bankName:g('pay_bank_name'),title:g('pay_bank_title'),number:g('pay_bank_num')},
+      easypaisa:{enabled:$('#pay_ep_on').checked,title:g('pay_ep_title'),number:g('pay_ep_num')},
+      jazzcash:{enabled:$('#pay_jc_on').checked,title:g('pay_jc_title'),number:g('pay_jc_num')}};
+    try{await api('admin/settings','POST',{...D.settings,payments});toast('Payment settings saved');await load()}catch(x){toast(x.message,1)}};
+}
+
 // ---------- settings ----------
 function set(){
   const s=D.settings;
   const f=(id,l,v,t='text')=>`<label>${l}<input id="s_${id}" type="${t}" value="${esc(v)}"></label>`;
-  M(`<h2>Settings</h2>${designHtml()}<div class="panel" style="display:grid;gap:12px">
+  M(`<h2>Settings</h2>${designHtml()}${payHtml()}<div class="panel" style="display:grid;gap:12px">
   <div class="g2">${f('shopName','Shop name',s.shopName)}${f('tagline','Tagline',s.tagline)}</div>
   <div class="g2">${f('heroTitle','Homepage heading',s.heroTitle)}${f('heroSub','Homepage sub-heading',s.heroSub)}</div>
   ${f('announcement','Top announcement bar (leave empty to hide)',s.announcement)}
   <div class="g2">${f('whatsapp','WhatsApp number (with country code, e.g. 923001234567)',s.whatsapp)}${f('phone','Phone (shown in footer)',s.phone)}</div>
-  <div class="g2">${f('address','Address (footer)',s.address)}${f('instagram','Instagram / Facebook',s.instagram)}</div>
-  <div class="g2">${f('deliveryCharge','Delivery charge (Rs.)',s.deliveryCharge,'number')}${f('freeDeliveryAbove','Free delivery above (Rs., 0 = never)',s.freeDeliveryAbove,'number')}</div>
+  <div class="g2">${f('address','Address (footer)',s.address)}${f('instagram','Instagram link or username (icon in footer)',s.instagram)}</div>
+  <div class="g2">${f('facebook','Facebook page link or name (icon in footer)',s.facebook)}<label>Delivery charges<select id="s_deliveryMode"><option value="note" ${s.deliveryMode!=='fixed'?'selected':''}>Do not add. Only show the message below</option><option value="fixed" ${s.deliveryMode==='fixed'?'selected':''}>Add a fixed amount to the total</option></select></label></div>
+  ${f('deliveryNote','Delivery message shown to customers (cart, checkout, invoice)',s.deliveryNote)}
+  <div class="g2">${f('deliveryCharge','Fixed delivery charge (Rs.) only for the Fixed option',s.deliveryCharge,'number')}${f('freeDeliveryAbove','Free delivery above (Rs., 0 = never) only for Fixed',s.freeDeliveryAbove,'number')}</div>
   ${f('invoiceNote','Thank-you note on invoice / slip',s.invoiceNote)}
   ${f('invoiceTerms','Terms on invoice (optional, e.g. return policy)',s.invoiceTerms)}
   <div><button class="btn" id="ss">Save Settings</button></div></div>`);
-  designInit();$('#ss').onclick=async()=>{const g=id=>$('#s_'+id).value;
-    await api('admin/settings','POST',{shopName:g('shopName'),tagline:g('tagline'),heroTitle:g('heroTitle'),heroSub:g('heroSub'),announcement:g('announcement'),whatsapp:g('whatsapp'),phone:g('phone'),address:g('address'),instagram:g('instagram'),deliveryCharge:+g('deliveryCharge'),freeDeliveryAbove:+g('freeDeliveryAbove'),invoiceNote:g('invoiceNote'),invoiceTerms:g('invoiceTerms'),globalDiscount:D.settings.globalDiscount});
+  designInit();payInit();$('#ss').onclick=async()=>{const g=id=>$('#s_'+id).value;
+    await api('admin/settings','POST',{shopName:g('shopName'),tagline:g('tagline'),heroTitle:g('heroTitle'),heroSub:g('heroSub'),announcement:g('announcement'),whatsapp:g('whatsapp'),phone:g('phone'),address:g('address'),instagram:g('instagram'),facebook:g('facebook'),deliveryMode:$('#s_deliveryMode').value,deliveryNote:g('deliveryNote'),deliveryCharge:+g('deliveryCharge'),freeDeliveryAbove:+g('freeDeliveryAbove'),invoiceNote:g('invoiceNote'),invoiceTerms:g('invoiceTerms'),globalDiscount:D.settings.globalDiscount});
     toast('Saved');await load()};
 }
 load();
