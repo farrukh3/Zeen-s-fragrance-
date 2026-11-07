@@ -1,0 +1,8 @@
+{
+  "name": "zeens-fragrance-store",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Zeen's Fragrance online store with admin panel (Vercel + Upstash Redis)",
+  "scripts": { "dev": "node dev-server.js" },
+  "engines": { "node": ">=18" }
+}
