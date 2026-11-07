@@ -93,7 +93,7 @@ async function load(){
 const tabs=[['dash','Dashboard'],['sell','Sell (In-Store)'],['prod','Products'],['ord','Orders'],['off','Offers'],['set','Settings']];
 function draw(){
   const pending=D.orders.filter(o=>o.status==='pending').length;
-  $('#app').innerHTML=`<div class="top"><b>Zeen's Admin</b><div class="tabs">${tabs.map(([k,v])=>`<button class="tab ${k===tab?'on':''}" data-t="${k}">${v}${k==='ord'&&pending?` (${pending})`:''}</button>`).join('')}</div>
+  $('#app').innerHTML=`<div class="top"><span>${D.settings.logo?`<img src="/api/img/${D.settings.logo}" style="height:34px;width:34px;object-fit:contain;border-radius:50%;vertical-align:middle;margin-right:8px">`:''}<b>Zeen's Admin</b></span><div class="tabs">${tabs.map(([k,v])=>`<button class="tab ${k===tab?'on':''}" data-t="${k}">${v}${k==='ord'&&pending?` (${pending})`:''}</button>`).join('')}</div>
   <span><a class="btn g s" href="/" target="_blank" style="text-decoration:none;display:inline-block">View Shop</a> <button class="btn g s" id="lo">Logout</button></span></div><main id="main"></main>`;
   $('#lo').onclick=async()=>{await api('admin/logout','POST');D=null;showLogin()};
   document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{tab=b.dataset.t;draw()});
@@ -175,10 +175,10 @@ function drawImgs(){
     try{const dataUrl=await resize(file);const r=await api('admin/image','POST',{dataUrl});editing.images.push(r.id);drawImgs()}catch(x){toast(x.message,1)}
   };
 }
-function resize(file,max=900){return new Promise((res,rej)=>{
+function resize(file,max=900,type='image/jpeg',q=.82){return new Promise((res,rej)=>{
   const im=new Image,u=URL.createObjectURL(file);
   im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
-    const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL('image/jpeg',.82))};
+    const x=c.getContext('2d');if(type==='image/jpeg'){x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height)}x.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL(type,q))};
   im.onerror=()=>rej(new Error('Image read nahi hui'));im.src=u})}
 
 // ---------- orders ----------
@@ -254,11 +254,55 @@ function off(){
   };
 }
 
+// ---------- design (colors, logo, hero image) ----------
+const PRESETS={
+ 'Green & Gold':{bg:'#0d2019',card:'#163226',accent:'#c9a24b',ink:'#f4efe3'},
+ 'Purple-Navy & Gold':{bg:'#120f2b',card:'#221d52',accent:'#d4af5a',ink:'#f6f1e6'},
+ 'Black & Gold':{bg:'#0b0b0c',card:'#1b1b1e',accent:'#c9a24b',ink:'#f5f1e8'},
+ 'Rose & Gold':{bg:'#2a1418',card:'#3d1f26',accent:'#d9a58a',ink:'#fbeee8'},
+ 'Cream & Gold (light)':{bg:'#faf6ee',card:'#fffdf8',accent:'#a67c1a',ink:'#2b2417'}};
+let dsn=null;
+function designHtml(){
+  const s=D.settings;dsn={theme:{...s.theme},logo:s.logo||'',heroImage:s.heroImage||''};
+  const cf=(k,l)=>`<label>${l}<input type="color" data-ck="${k}" value="${dsn.theme[k]}" style="height:44px;padding:3px"></label>`;
+  return `<div class="panel" id="design" style="display:grid;gap:14px"><h2 style="font-size:20px;margin:0">Website Design</h2>
+  <div><div class="mut" style="margin-bottom:6px">Quick styles (tap one, then Save Design)</div><div class="bar" style="margin:0" id="presets">${Object.keys(PRESETS).map(n=>`<button class="btn g s" data-pr="${esc(n)}">${esc(n)}</button>`).join('')}</div></div>
+  <div class="g2" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">${cf('bg','Background')}${cf('card','Cards / boxes')}${cf('accent','Gold / buttons')}${cf('ink','Text')}</div>
+  <div id="pv"></div>
+  <div class="g2"><div><div class="mut" style="margin-bottom:6px">Logo (PNG with transparent background is best)</div><div id="dlogo"></div></div>
+  <div><div class="mut" style="margin-bottom:6px">Home page main picture (optional, replaces the bottle drawing)</div><div id="dhero"></div></div></div>
+  <div><button class="btn" id="sd">Save Design</button></div></div>`;
+}
+function designInit(){
+  const draw=()=>{
+    const t=dsn.theme;
+    $('#pv').innerHTML=`<div style="background:${t.bg};border:1px solid ${t.accent}55;border-radius:12px;padding:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      ${dsn.logo?`<img src="/api/img/${dsn.logo}" style="width:54px;height:54px;object-fit:contain;border-radius:50%">`:`<div style="width:54px;height:54px;border-radius:50%;border:1.5px solid ${t.accent};color:${t.accent};display:grid;place-items:center;font:600 28px Georgia,serif">Z</div>`}
+      <div style="flex:1;min-width:150px"><div style="font:600 24px Georgia,serif;color:${t.accent}">Zeen's Fragrance</div><div style="color:${t.ink};opacity:.75;font-size:13px">Preview of your website colors</div></div>
+      <div style="background:${t.card};color:${t.ink};border:1px solid ${t.accent}66;border-radius:10px;padding:10px 14px;font-size:13px">Product card</div>
+      <div style="background:${t.accent};color:${t.bg};border-radius:999px;padding:9px 18px;font-weight:600;font-size:13px">Shop Now</div></div>`;
+    document.querySelectorAll('[data-ck]').forEach(i=>i.value=dsn.theme[i.dataset.ck]);
+    const box=(k,id,lbl)=>{$(id).innerHTML=(dsn[k]?`<div class="im" style="display:inline-block"><img src="/api/img/${dsn[k]}" style="width:${k==='logo'?96:140}px;height:96px;object-fit:${k==='logo'?'contain':'cover'};background:#8883"><button data-rm="${k}">×</button></div>`:`<label class="add" style="width:${k==='logo'?96:140}px;height:96px">+ ${lbl}<input type="file" accept="image/*" data-up="${k}" hidden></label>`)};
+    box('logo','#dlogo','Upload logo');box('heroImage','#dhero','Upload picture');
+  };
+  draw();
+  const d=$('#design');
+  d.oninput=e=>{const k=e.target.dataset.ck;if(k){dsn.theme[k]=e.target.value;draw()}};
+  d.onclick=async e=>{
+    const p=e.target.closest('[data-pr]');if(p){Object.assign(dsn.theme,PRESETS[p.dataset.pr]);return draw()}
+    const r=e.target.closest('[data-rm]');if(r){dsn[r.dataset.rm]='';return draw()}
+    if(e.target.id==='sd'){try{await api('admin/settings','POST',{...D.settings,theme:dsn.theme,logo:dsn.logo,heroImage:dsn.heroImage});toast('Design saved. Open the shop to see it.');await load()}catch(x){toast(x.message,1)}}
+  };
+  d.onchange=async e=>{const k=e.target.dataset.up;if(!k)return;const f=e.target.files[0];if(!f)return;
+    try{const logo=k==='logo';const dataUrl=await resize(f,logo?480:1200,logo?'image/webp':'image/jpeg',logo?.92:.8);
+      const r=await api('admin/image','POST',{dataUrl});dsn[k]=r.id;draw()}catch(x){toast(x.message,1)}};
+}
+
 // ---------- settings ----------
 function set(){
   const s=D.settings;
   const f=(id,l,v,t='text')=>`<label>${l}<input id="s_${id}" type="${t}" value="${esc(v)}"></label>`;
-  M(`<h2>Settings</h2><div class="panel" style="display:grid;gap:12px">
+  M(`<h2>Settings</h2>${designHtml()}<div class="panel" style="display:grid;gap:12px">
   <div class="g2">${f('shopName','Shop name',s.shopName)}${f('tagline','Tagline',s.tagline)}</div>
   <div class="g2">${f('heroTitle','Homepage heading',s.heroTitle)}${f('heroSub','Homepage sub-heading',s.heroSub)}</div>
   ${f('announcement','Top announcement bar (leave empty to hide)',s.announcement)}
@@ -266,7 +310,7 @@ function set(){
   <div class="g2">${f('address','Address (footer)',s.address)}${f('instagram','Instagram / Facebook',s.instagram)}</div>
   <div class="g2">${f('deliveryCharge','Delivery charge (Rs.)',s.deliveryCharge,'number')}${f('freeDeliveryAbove','Free delivery above (Rs., 0 = never)',s.freeDeliveryAbove,'number')}</div>
   <div><button class="btn" id="ss">Save Settings</button></div></div>`);
-  $('#ss').onclick=async()=>{const g=id=>$('#s_'+id).value;
+  designInit();$('#ss').onclick=async()=>{const g=id=>$('#s_'+id).value;
     await api('admin/settings','POST',{shopName:g('shopName'),tagline:g('tagline'),heroTitle:g('heroTitle'),heroSub:g('heroSub'),announcement:g('announcement'),whatsapp:g('whatsapp'),phone:g('phone'),address:g('address'),instagram:g('instagram'),deliveryCharge:+g('deliveryCharge'),freeDeliveryAbove:+g('freeDeliveryAbove'),globalDiscount:D.settings.globalDiscount});
     toast('Saved');await load()};
 }
