@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Admin | Zeen's Fragrance</title>
+<style>
+:root{--bg:#0d2019;--bg2:#12291f;--card:#163226;--line:#27493a;--gold:#c9a24b;--gold2:#e4c77c;--ink:#f4efe3;--mute:#a9b8ad;--red:#e0654f;--green:#7fd69c}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,sans-serif}
+button{font:inherit;cursor:pointer;border:0;color:inherit;background:none}
+input,textarea,select{font:inherit;color:var(--ink);background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--gold);outline-offset:-1px}
+label{display:grid;gap:4px;color:var(--mute);font-size:12px}
+.btn{background:var(--gold);color:#1b1b12;font-weight:600;border-radius:8px;padding:9px 16px}
+.btn:hover{background:var(--gold2)}.btn.g{background:none;border:1px solid var(--line);color:var(--ink)}.btn.r{background:none;border:1px solid var(--red);color:var(--red)}
+.btn.s{padding:5px 10px;font-size:13px}
+.login{min-height:100vh;display:grid;place-items:center;padding:16px}
+.lbox{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:30px;width:min(380px,100%);display:grid;gap:14px}
+.lbox h1{font:600 30px Georgia,serif;color:var(--gold2)}
+.er{color:var(--red);font-size:13px;min-height:18px}
+.top{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--bg2);position:sticky;top:0;z-index:10;gap:10px;flex-wrap:wrap}
+.top b{font:600 22px Georgia,serif;color:var(--gold2)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{padding:8px 14px;border-radius:8px;color:var(--mute)}.tab.on{background:var(--gold);color:#1b1b12;font-weight:600}
+main{padding:18px;max-width:1200px;margin:0 auto}
+h2{font:600 26px Georgia,serif;color:var(--gold2);margin-bottom:12px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.stat span{color:var(--mute);font-size:12px;text-transform:uppercase;letter-spacing:1px}.stat b{display:block;font-size:24px;color:var(--gold2);margin-top:2px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px;overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:560px}
+th{text-align:left;color:var(--mute);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:1px}
+th,td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;background:#0f261c;display:block}
+.pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;border:1px solid var(--line)}
+.pill.pending{color:#f1c40f;border-color:#f1c40f}.pill.confirmed,.pill.shipped{color:#6cb6ff;border-color:#6cb6ff}.pill.delivered{color:var(--green);border-color:var(--green)}.pill.cancelled{color:var(--red);border-color:var(--red)}
+.low{color:var(--red);font-weight:600}
+.bar{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.bar input,.bar select{width:auto;min-width:160px}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:30;display:none;align-items:flex-start;justify-content:center;padding:20px 12px;overflow:auto}
+.ov.on{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--line);border-radius:14px;width:min(760px,100%);padding:20px;display:grid;gap:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.vr{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;align-items:end}
+.imgs{display:flex;gap:8px;flex-wrap:wrap}
+.im{position:relative}.im img{width:84px;height:84px;object-fit:cover;border-radius:8px;display:block;border:1px solid var(--line)}
+.im button{position:absolute;top:-6px;right:-6px;background:var(--red);border-radius:50%;width:20px;height:20px;line-height:20px;font-size:14px}
+.add{width:84px;height:84px;border:1px dashed var(--gold);border-radius:8px;color:var(--gold2);display:grid;place-items:center;font-size:12px;text-align:center;cursor:pointer}
+.chk{display:flex;gap:16px;align-items:center}.chk label{display:flex;align-items:center;gap:6px;color:var(--ink);font-size:14px}.chk input{width:auto}
+.pos{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
+.pp{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.pp .it{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px}
+.pp .it b{display:block;margin-bottom:6px}
+.pp .it button{display:block;width:100%;text-align:left;padding:6px 8px;border:1px solid var(--line);border-radius:8px;margin-top:4px;font-size:13px}
+.pp .it button:hover:not([disabled]){border-color:var(--gold)}.pp .it button[disabled]{opacity:.4}
+.row{display:flex;justify-content:space-between;padding:3px 0;color:var(--mute)}.row.t{color:var(--ink);font-size:18px;font-weight:600}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--gold);color:#1b1b12;border-radius:10px;padding:10px 18px;font-weight:600;z-index:60;display:none}
+.toast.er{background:var(--red);color:#fff}
+.mut{color:var(--mute)}
+@media(max-width:760px){.pos{grid-template-columns:1fr}.g2,.g3{grid-template-columns:1fr}.vr{grid-template-columns:1fr 1fr}}
+@media print{.top,.tabs,.bar,.btn{display:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="ov" id="ov"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rs=n=>'Rs. '+Number(n||0).toLocaleString('en-PK');
+const BOTTLE='<div class="thumb"></div>';
+let D=null,tab='dash',bill=[],editing=null,oFilter='all';
+function toast(m,er){const t=$('#toast');t.textContent=m;t.className='toast'+(er?' er':'');t.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display='none',2600)}
+async function api(path,method='GET',body){
+  const r=await fetch('/api/'+path,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+  const d=await r.json().catch(()=>({}));
+  if(r.status===401&&path!=='admin/login'){D=null;showLogin();throw new Error('login')}
+  if(!r.ok)throw new Error(d.error||'Error');return d;
+}
+function showLogin(){
+  $('#app').innerHTML=`<div class="login"><form class="lbox" id="lf"><h1>Zeen's Admin</h1><span class="mut">Enter your admin password to manage the store.</span>
+  <input type="password" id="pw" placeholder="Password" autofocus required><div class="er" id="le"></div><button class="btn">Login</button></form></div>`;
+  $('#lf').onsubmit=async e=>{e.preventDefault();try{await api('admin/login','POST',{password:$('#pw').value});await load()}catch(x){$('#le').textContent=x.message}};
+}
+async function load(){
+  try{D=await api('admin/data');}catch(e){if(e.message!=='login')showLogin();return}
+  draw();
+}
+const tabs=[['dash','Dashboard'],['sell','Sell (In-Store)'],['prod','Products'],['ord','Orders'],['off','Offers'],['set','Settings']];
+function draw(){
+  const pending=D.orders.filter(o=>o.status==='pending').length;
+  $('#app').innerHTML=`<div class="top"><b>Zeen's Admin</b><div class="tabs">${tabs.map(([k,v])=>`<button class="tab ${k===tab?'on':''}" data-t="${k}">${v}${k==='ord'&&pending?` (${pending})`:''}</button>`).join('')}</div>
+  <span><a class="btn g s" href="/" target="_blank" style="text-decoration:none;display:inline-block">View Shop</a> <button class="btn g s" id="lo">Logout</button></span></div><main id="main"></main>`;
+  $('#lo').onclick=async()=>{await api('admin/logout','POST');D=null;showLogin()};
+  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{tab=b.dataset.t;draw()});
+  ({dash,sell,prod,ord,off,set}[tab])();
+}
+const M=h=>$('#main').innerHTML=h;
+const stock=p=>p.variants.reduce((s,v)=>s+v.stock,0);
+const thumb=p=>p.images[0]?`<img class="thumb" src="/api/img/${p.images[0]}">`:BOTTLE;
+
+// ---------- dashboard ----------
+function dash(){
+  const live=D.orders.filter(o=>o.status!=='cancelled'),now=new Date(),td=now.toDateString();
+  const sum=a=>a.reduce((s,o)=>s+o.total,0);
+  const today=live.filter(o=>new Date(o.createdAt).toDateString()===td);
+  const month=live.filter(o=>{const d=new Date(o.createdAt);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()});
+  const low=[];D.products.forEach(p=>p.variants.forEach(v=>{if(v.stock<=3)low.push([p,v])}));
+  const val=D.products.reduce((s,p)=>s+p.variants.reduce((a,v)=>a+v.stock*v.price,0),0);
+  const best={};live.forEach(o=>o.lines.forEach(l=>best[l.name]=(best[l.name]||0)+l.qty));
+  const top=Object.entries(best).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  M(`<h2>Dashboard</h2><div class="cards">
+   <div class="stat"><span>Today's sales</span><b>${rs(sum(today))}</b><small class="mut">${today.length} orders</small></div>
+   <div class="stat"><span>This month</span><b>${rs(sum(month))}</b><small class="mut">${month.length} orders</small></div>
+   <div class="stat"><span>Total sales</span><b>${rs(sum(live))}</b><small class="mut">${live.length} orders</small></div>
+   <div class="stat"><span>Pending orders</span><b>${D.orders.filter(o=>o.status==='pending').length}</b></div>
+   <div class="stat"><span>Stock (units)</span><b>${D.products.reduce((s,p)=>s+stock(p),0)}</b><small class="mut">Value ${rs(val)}</small></div></div>
+   <div class="g2"><div class="panel"><h2 style="font-size:20px">Low / out of stock</h2>${low.length?`<table><tbody>${low.map(([p,v])=>`<tr><td>${esc(p.name)} ${esc(v.size)}</td><td class="low">${v.stock} left</td></tr>`).join('')}</tbody></table>`:'<span class="mut">All good.</span>'}</div>
+   <div class="panel"><h2 style="font-size:20px">Best sellers</h2>${top.length?`<table><tbody>${top.map(([n,q])=>`<tr><td>${esc(n)}</td><td>${q} sold</td></tr>`).join('')}</tbody></table>`:'<span class="mut">No sales yet.</span>'}</div></div>
+   <div class="panel"><h2 style="font-size:20px">Recent orders</h2>${ordTable(D.orders.slice(0,6),false)}</div>`);
+}
+
+// ---------- products ----------
+function prod(){
+  M(`<h2>Products</h2><div class="bar"><button class="btn" id="np">+ Add Product</button><input id="ps" placeholder="Search..."></div>
+  <div class="panel"><table><thead><tr><th></th><th>Name</th><th>Category</th><th>Sizes / price / stock</th><th>Status</th><th></th></tr></thead><tbody id="pt"></tbody></table></div>`);
+  const fill=()=>{const q=$('#ps').value.toLowerCase();$('#pt').innerHTML=D.products.filter(p=>p.name.toLowerCase().includes(q)).map(p=>`<tr><td>${thumb(p)}</td><td><b>${esc(p.name)}</b>${p.featured?' ★':''}</td><td>${esc(p.category)}</td>
+   <td>${p.variants.map(v=>`${esc(v.size)}: ${rs(v.price)}${v.discount?` (-${v.discount}%)`:''} · <span class="${v.stock<=3?'low':''}">stock ${v.stock}</span>`).join('<br>')}</td>
+   <td><span class="pill ${p.active?'delivered':'cancelled'}">${p.active?'Visible':'Hidden'}</span></td>
+   <td style="white-space:nowrap"><button class="btn g s" data-e="${p.id}">Edit</button> <button class="btn r s" data-d="${p.id}">Delete</button></td></tr>`).join('')||'<tr><td colspan=6 class="mut">No products.</td></tr>'};
+  fill();$('#ps').oninput=fill;$('#np').onclick=()=>pform(null);
+  $('#pt').onclick=async e=>{
+    const ed=e.target.closest('[data-e]');if(ed)return pform(D.products.find(p=>p.id===ed.dataset.e));
+    const dl=e.target.closest('[data-d]');if(dl&&confirm('Delete this product permanently?')){await api('admin/product/'+dl.dataset.d,'DELETE');toast('Deleted');await load()}
+  };
+}
+function pform(p){
+  editing=p?JSON.parse(JSON.stringify(p)):{name:'',brand:"Zeen's Fragrance",category:'men',description:'',notes:{top:[],heart:[],base:[]},images:[],badge:'',featured:false,active:true,variants:[{size:'50ml',price:1500,discount:0,stock:0},{size:'30ml',price:1000,discount:0,stock:0}]};
+  const e=editing;
+  $('#modal').innerHTML=`<h2>${p?'Edit':'Add'} Product</h2>
+  <div class="g2"><label>Name *<input id="f_name" value="${esc(e.name)}"></label><label>Brand<input id="f_brand" value="${esc(e.brand)}"></label></div>
+  <div class="g3"><label>Category<select id="f_cat">${['men','women','unisex'].map(c=>`<option ${e.category===c?'selected':''}>${c}</option>`).join('')}</select></label>
+   <label>Badge (e.g. New, Best Seller)<input id="f_badge" value="${esc(e.badge)}"></label>
+   <div class="chk" style="padding-top:18px"><label><input type="checkbox" id="f_feat" ${e.featured?'checked':''}>Featured</label><label><input type="checkbox" id="f_act" ${e.active?'checked':''}>Visible on shop</label></div></div>
+  <label>Description<textarea id="f_desc" rows="3">${esc(e.description)}</textarea></label>
+  <div class="g3"><label>Top notes (comma separated)<input id="f_top" value="${esc(e.notes.top.join(', '))}"></label><label>Heart notes<input id="f_heart" value="${esc(e.notes.heart.join(', '))}"></label><label>Base notes<input id="f_base" value="${esc(e.notes.base.join(', '))}"></label></div>
+  <div><div class="mut" style="margin-bottom:6px;font-size:12px">Photos (first photo is the main one, max 4)</div><div class="imgs" id="f_imgs"></div></div>
+  <div><div class="mut" style="margin-bottom:6px;font-size:12px">Sizes — price, discount % and stock</div><div id="f_vars" style="display:grid;gap:8px"></div><button class="btn g s" id="addv" style="margin-top:8px">+ Add size</button></div>
+  <div class="er" id="f_er"></div>
+  <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn g" id="cancel">Cancel</button><button class="btn" id="save">Save Product</button></div>`;
+  drawImgs();drawVars();$('#ov').classList.add('on');
+  $('#cancel').onclick=()=>$('#ov').classList.remove('on');
+  $('#addv').onclick=()=>{readVars();e.variants.push({size:'',price:0,discount:0,stock:0});drawVars()};
+  $('#save').onclick=async()=>{
+    readVars();
+    const body={id:e.id,name:$('#f_name').value,brand:$('#f_brand').value,category:$('#f_cat').value,badge:$('#f_badge').value,featured:$('#f_feat').checked,active:$('#f_act').checked,
+      description:$('#f_desc').value,notes:{top:$('#f_top').value,heart:$('#f_heart').value,base:$('#f_base').value},images:e.images,variants:e.variants};
+    try{await api('admin/product','POST',body);$('#ov').classList.remove('on');toast('Saved');await load()}catch(x){$('#f_er').textContent=x.message}
+  };
+}
+function readVars(){editing.variants=[...document.querySelectorAll('.vr')].map(r=>({size:r.querySelector('.s').value,price:+r.querySelector('.p').value,discount:+r.querySelector('.d').value,stock:+r.querySelector('.k').value}))}
+function drawVars(){
+  $('#f_vars').innerHTML=editing.variants.map((v,i)=>`<div class="vr"><label>Size<input class="s" value="${esc(v.size)}" placeholder="50ml"></label><label>Price (Rs.)<input class="p" type="number" min="0" value="${v.price}"></label><label>Discount %<input class="d" type="number" min="0" max="95" value="${v.discount}"></label><label>Stock<input class="k" type="number" min="0" value="${v.stock}"></label><button class="btn r s" data-rv="${i}">✕</button></div>`).join('');
+  $('#f_vars').onclick=e=>{const b=e.target.closest('[data-rv]');if(b){readVars();editing.variants.splice(+b.dataset.rv,1);drawVars()}};
+}
+function drawImgs(){
+  $('#f_imgs').innerHTML=editing.images.map((m,i)=>`<div class="im"><img src="/api/img/${m}"><button data-ri="${i}">×</button></div>`).join('')+(editing.images.length<4?`<label class="add">+ Add photo<input type="file" accept="image/*" id="f_file" hidden></label>`:'');
+  $('#f_imgs').onclick=e=>{const b=e.target.closest('[data-ri]');if(b){editing.images.splice(+b.dataset.ri,1);drawImgs()}};
+  const f=$('#f_file');if(f)f.onchange=async()=>{
+    const file=f.files[0];if(!file)return;
+    try{const dataUrl=await resize(file);const r=await api('admin/image','POST',{dataUrl});editing.images.push(r.id);drawImgs()}catch(x){toast(x.message,1)}
+  };
+}
+function resize(file,max=900){return new Promise((res,rej)=>{
+  const im=new Image,u=URL.createObjectURL(file);
+  im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
+    const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL('image/jpeg',.82))};
+  im.onerror=()=>rej(new Error('Image read nahi hui'));im.src=u})}
+
+// ---------- orders ----------
+function ordTable(list,ctl=true){
+  if(!list.length)return '<span class="mut">No orders yet.</span>';
+  return `<table><thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th></tr></thead><tbody>${list.map(o=>`<tr><td><b>${esc(o.id)}</b><br><span class="pill">${o.source==='store'?'In-store':'Online'}</span></td>
+   <td>${new Date(o.createdAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
+   <td>${esc(o.customer.name)}<br><span class="mut">${esc(o.customer.phone)}</span>${o.customer.address?`<br><span class="mut">${esc(o.customer.address)}, ${esc(o.customer.city)}</span>`:''}${o.customer.note?`<br><i class="mut">${esc(o.customer.note)}</i>`:''}</td>
+   <td>${o.lines.map(l=>`${esc(l.name)} ${esc(l.size)} ×${l.qty}`).join('<br>')}</td>
+   <td>${rs(o.total)}<br><span class="mut">${esc(o.payment)}${o.coupon?' · '+esc(o.coupon):''}</span></td>
+   <td>${ctl&&o.status!=='cancelled'?`<select data-o="${o.id}">${['pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>`:`<span class="pill ${o.status}">${o.status}</span>`}</td></tr>`).join('')}</tbody></table>`;
+}
+function ord(){
+  const list=D.orders.filter(o=>oFilter==='all'||o.status===oFilter);
+  M(`<h2>Orders</h2><div class="bar"><select id="of">${['all','pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${oFilter===s?'selected':''}>${s}</option>`).join('')}</select><span class="mut">Cancelling an order puts its stock back automatically.</span></div><div class="panel">${ordTable(list)}</div>`);
+  $('#of').onchange=e=>{oFilter=e.target.value;ord()};
+  $('#main').onchange=async e=>{const s=e.target.closest('[data-o]');if(!s)return;
+    if(s.value==='cancelled'&&!confirm('Cancel this order and return stock?')){return ord()}
+    try{await api('admin/order/'+s.dataset.o,'POST',{status:s.value});toast('Updated');await load()}catch(x){toast(x.message,1)}};
+}
+
+// ---------- in-store sell ----------
+function sell(){
+  M(`<h2>Sell (In-Store)</h2><div class="pos"><div><div class="bar"><input id="sq" placeholder="Search perfume..." style="width:100%"></div><div class="pp" id="pp"></div></div>
+  <div class="panel" style="align-self:start"><h2 style="font-size:20px">Bill</h2><div id="bl"></div></div></div>`);
+  const fill=()=>{const q=$('#sq').value.toLowerCase();$('#pp').innerHTML=D.products.filter(p=>p.name.toLowerCase().includes(q)).map(p=>`<div class="it"><b>${esc(p.name)}</b>${p.variants.map(v=>`<button ${v.stock<=0?'disabled':''} data-a="${p.id}|${esc(v.size)}">${esc(v.size)} · ${rs(v.price-Math.round(v.price*Math.max(v.discount,D.settings.globalDiscount.pct)/100))}<br><small class="mut">stock ${v.stock}</small></button>`).join('')}</div>`).join('')};
+  fill();$('#sq').oninput=fill;
+  $('#pp').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const[pid,size]=b.dataset.a.split('|');
+    const p=D.products.find(x=>x.id===pid),v=p.variants.find(x=>x.size===size);const l=bill.find(x=>x.pid===pid&&x.size===size);
+    if(l){if(l.qty<v.stock)l.qty++}else bill.push({pid,size,qty:1});drawBill()};
+  drawBill();
+}
+function drawBill(){
+  const g=D.settings.globalDiscount.pct;
+  const L=bill.map(b=>{const p=D.products.find(x=>x.id===b.pid),v=p.variants.find(x=>x.size===b.size);const pct=Math.max(v.discount,g);const unit=Math.round(v.price*(1-pct/100));return{...b,p,v,unit}});
+  const sub=L.reduce((s,l)=>s+l.unit*l.qty,0);
+  $('#bl').innerHTML=L.length?`${L.map((l,i)=>`<div class="row" style="align-items:center"><span style="color:var(--ink)">${esc(l.p.name)} ${esc(l.size)}<br><small>${rs(l.unit)}</small></span>
+   <span><button class="btn g s" data-m="${i}">−</button> ${l.qty} <button class="btn g s" data-pl="${i}">+</button> <b style="color:var(--ink)">${rs(l.unit*l.qty)}</b></span></div>`).join('')}
+   <div class="row"><span>Subtotal</span><span>${rs(sub)}</span></div>
+   <label style="margin:6px 0">Extra discount (Rs.)<input id="bd" type="number" min="0" value="${window._bd||0}"></label>
+   <div class="g2"><label>Customer name<input id="bn" placeholder="Walk-in"></label><label>Phone<input id="bp"></label></div>
+   <label style="margin:6px 0">Payment<select id="bpm"><option>Cash</option><option>Card</option><option>Bank Transfer</option><option>JazzCash/Easypaisa</option></select></label>
+   <div class="row t"><span>Total</span><span id="bt">${rs(sub-(window._bd||0))}</span></div>
+   <button class="btn" id="bs" style="width:100%;margin-top:8px">Complete Sale</button> <button class="btn g" id="bc" style="width:100%;margin-top:6px">Clear</button>`:'<span class="mut">Tap a size to add it to the bill.</span>';
+  const d=$('#bd');if(d)d.oninput=()=>{window._bd=Math.max(0,+d.value||0);$('#bt').textContent=rs(Math.max(0,sub-window._bd))};
+  $('#bl').onclick=async e=>{
+    const m=e.target.closest('[data-m]'),pl=e.target.closest('[data-pl]');
+    if(m){const l=bill[+m.dataset.m];l.qty--;if(l.qty<1)bill.splice(+m.dataset.m,1);return drawBill()}
+    if(pl){const l=L[+pl.dataset.pl];if(l.qty<l.v.stock)bill[+pl.dataset.pl].qty++;return drawBill()}
+    if(e.target.id==='bc'){bill=[];window._bd=0;return drawBill()}
+    if(e.target.id==='bs'){
+      try{const r=await api('admin/sale','POST',{items:bill,discount:window._bd||0,customerName:$('#bn').value,customerPhone:$('#bp').value,payment:$('#bpm').value});
+        toast('Sale done: '+r.order.id+' · '+rs(r.order.total));bill=[];window._bd=0;await load()}catch(x){toast(x.message,1)}
+    }
+  };
+}
+
+// ---------- offers ----------
+function off(){
+  const g=D.settings.globalDiscount;
+  M(`<h2>Offers & Coupons</h2>
+  <div class="panel"><h2 style="font-size:20px">Store-wide sale</h2><span class="mut">Applies to all perfumes automatically (if a product has a higher discount, that one is used).</span>
+  <div class="g3" style="margin-top:10px"><label>Discount %<input id="gp" type="number" min="0" max="90" value="${g.pct}"></label><label>Sale name (e.g. Eid Sale)<input id="gl" value="${esc(g.label)}"></label><label>&nbsp;<button class="btn" id="gs">Save Sale</button></label></div></div>
+  <div class="panel"><h2 style="font-size:20px">Coupon codes</h2>
+  <table><thead><tr><th>Code</th><th>Discount</th><th>Min order</th><th>Expires</th><th>Active</th><th></th></tr></thead><tbody>${D.coupons.map(c=>`<tr><td><b>${esc(c.code)}</b></td><td>${c.type==='fixed'?rs(c.value):c.value+'%'}</td><td>${rs(c.minOrder)}</td><td>${esc(c.expires||'—')}</td><td>${c.active?'Yes':'No'}</td><td style="white-space:nowrap"><button class="btn g s" data-ct="${esc(c.code)}">${c.active?'Disable':'Enable'}</button> <button class="btn r s" data-cd="${esc(c.code)}">Delete</button></td></tr>`).join('')||'<tr><td colspan=6 class="mut">No coupons yet.</td></tr>'}</tbody></table>
+  <div class="g3" style="margin-top:14px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))"><label>Code<input id="cc" placeholder="EID10"></label><label>Type<select id="ct"><option value="percent">Percent %</option><option value="fixed">Fixed Rs.</option></select></label><label>Value<input id="cv" type="number" min="0"></label><label>Min order (Rs.)<input id="cm" type="number" min="0" value="0"></label><label>Expiry date<input id="ce" type="date"></label><label>&nbsp;<button class="btn" id="ca">Add Coupon</button></label></div></div>`);
+  $('#gs').onclick=async()=>{await api('admin/settings','POST',{...D.settings,globalDiscount:{pct:+$('#gp').value,label:$('#gl').value}});toast('Sale saved');await load()};
+  $('#ca').onclick=async()=>{try{await api('admin/coupon','POST',{code:$('#cc').value,type:$('#ct').value,value:+$('#cv').value,minOrder:+$('#cm').value,expires:$('#ce').value,active:true});toast('Coupon added');await load()}catch(x){toast(x.message,1)}};
+  $('#main').onclick=async e=>{
+    const t=e.target.closest('[data-ct]'),d=e.target.closest('[data-cd]');
+    if(t){const c=D.coupons.find(x=>x.code===t.dataset.ct);await api('admin/coupon','POST',{...c,active:!c.active});await load()}
+    if(d&&confirm('Delete coupon?')){await api('admin/coupon/'+d.dataset.cd,'DELETE');await load()}
+  };
+}
+
+// ---------- settings ----------
+function set(){
+  const s=D.settings;
+  const f=(id,l,v,t='text')=>`<label>${l}<input id="s_${id}" type="${t}" value="${esc(v)}"></label>`;
+  M(`<h2>Settings</h2><div class="panel" style="display:grid;gap:12px">
+  <div class="g2">${f('shopName','Shop name',s.shopName)}${f('tagline','Tagline',s.tagline)}</div>
+  <div class="g2">${f('heroTitle','Homepage heading',s.heroTitle)}${f('heroSub','Homepage sub-heading',s.heroSub)}</div>
+  ${f('announcement','Top announcement bar (leave empty to hide)',s.announcement)}
+  <div class="g2">${f('whatsapp','WhatsApp number (with country code, e.g. 923001234567)',s.whatsapp)}${f('phone','Phone (shown in footer)',s.phone)}</div>
+  <div class="g2">${f('address','Address (footer)',s.address)}${f('instagram','Instagram / Facebook',s.instagram)}</div>
+  <div class="g2">${f('deliveryCharge','Delivery charge (Rs.)',s.deliveryCharge,'number')}${f('freeDeliveryAbove','Free delivery above (Rs., 0 = never)',s.freeDeliveryAbove,'number')}</div>
+  <div><button class="btn" id="ss">Save Settings</button></div></div>`);
+  $('#ss').onclick=async()=>{const g=id=>$('#s_'+id).value;
+    await api('admin/settings','POST',{shopName:g('shopName'),tagline:g('tagline'),heroTitle:g('heroTitle'),heroSub:g('heroSub'),announcement:g('announcement'),whatsapp:g('whatsapp'),phone:g('phone'),address:g('address'),instagram:g('instagram'),deliveryCharge:+g('deliveryCharge'),freeDeliveryAbove:+g('freeDeliveryAbove'),globalDiscount:D.settings.globalDiscount});
+    toast('Saved');await load()};
+}
+load();
+</script>
+</body>
+</html>
