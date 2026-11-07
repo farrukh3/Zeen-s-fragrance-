@@ -44,6 +44,8 @@ async function getProducts() {
 }
 const getOrders = async () => (await db.get('orders')) || [];
 const getCoupons = async () => (await db.get('coupons')) || [];
+const getExpenses = async () => (await db.get('expenses')) || [];
+const newToken = () => crypto.randomBytes(8).toString('hex');
 
 async function readBody(req) {
   if (req.body !== undefined && req.body !== null && req.body !== '') {
@@ -120,14 +122,26 @@ module.exports = async (req, res) => {
       L.applyStock(products, lines, -1);
       const { no, id } = await nextOrderId();
       const order = {
-        id, no, createdAt: new Date().toISOString(), source: 'online', status: 'pending', payment: 'COD',
+        id, no, token: newToken(), createdAt: new Date().toISOString(), source: 'online', status: 'pending', payment: 'COD',
         customer, lines, ...t, coupon: coupon && t.discount ? coupon.code : '',
       };
       await db.set('products', products);
       const orders = await getOrders();
       orders.unshift(order);
       await db.set('orders', orders);
-      return send(200, { ok: true, order });
+      return send(200, { ok: true, order: L.stripCost(order) });
+    }
+
+    // public invoice (needs the secret token from the invoice link, or admin login)
+    if (method === 'GET' && a === 'invoice' && b) {
+      const o = (await getOrders()).find((x) => x.id === b);
+      const t = url.searchParams.get('t') || '';
+      const admin = isAdmin(req);
+      const tokOk = !!(o && o.token && t.length === o.token.length && crypto.timingSafeEqual(Buffer.from(t), Buffer.from(o.token)));
+      if (!o || !(admin || tokOk)) return send(404, { error: 'Invoice nahi mila' });
+      const st = await getSettings();
+      const shop = { shopName: st.shopName, logo: st.logo, address: st.address, phone: st.phone, whatsapp: st.whatsapp, instagram: st.instagram, invoiceNote: st.invoiceNote, invoiceTerms: st.invoiceTerms, accent: st.theme.accent };
+      return send(200, { order: admin ? o : L.stripCost(o), shop });
     }
 
     // ===== admin login =====
@@ -153,8 +167,11 @@ module.exports = async (req, res) => {
       if (!isAdmin(req)) return send(401, { error: 'Login zaroori hai' });
 
       if (method === 'GET' && b === 'data') {
-        const [settings, products, orders, coupons] = await Promise.all([getSettings(), getProducts(), getOrders(), getCoupons()]);
-        return send(200, { settings, products, orders, coupons });
+        const [settings, products, orders, coupons, expenses] = await Promise.all([getSettings(), getProducts(), getOrders(), getCoupons(), getExpenses()]);
+        let changed = false;
+        for (const o of orders) if (!o.token) { o.token = newToken(); changed = true; }
+        if (changed) await db.set('orders', orders);
+        return send(200, { settings, products, orders, coupons, expenses });
       }
 
       if (method === 'POST' && b === 'image') {
@@ -216,7 +233,7 @@ module.exports = async (req, res) => {
         L.applyStock(products, lines, -1);
         const { no, id } = await nextOrderId();
         const order = {
-          id, no, createdAt: new Date().toISOString(), source: 'store', status: 'delivered',
+          id, no, token: newToken(), createdAt: new Date().toISOString(), source: 'store', status: 'delivered',
           payment: ['Cash', 'Card', 'Bank Transfer', 'JazzCash/Easypaisa'].includes(body.payment) ? body.payment : 'Cash',
           customer: { name: str(body.customerName, 80) || 'Walk-in', phone: str(body.customerPhone, 20), city: '', address: '', note: '' },
           lines, ...t, coupon: '',
@@ -250,11 +267,33 @@ module.exports = async (req, res) => {
           const t = body.theme, ct = cur.theme;
           next.theme = { bg: hex(t.bg, ct.bg), card: hex(t.card, ct.card), accent: hex(t.accent, ct.accent), ink: hex(t.ink, ct.ink) };
         }
+        next.invoiceNote = body.invoiceNote === undefined ? cur.invoiceNote : str(body.invoiceNote, 300);
+        next.invoiceTerms = body.invoiceTerms === undefined ? cur.invoiceTerms : str(body.invoiceTerms, 400);
         next.logo = imgId(body.logo, cur.logo);
         next.heroImage = imgId(body.heroImage, cur.heroImage);
         for (const k of ['logo', 'heroImage']) if (cur[k] && cur[k] !== next[k]) await db.del('img:' + cur[k]);
         await db.set('settings', next);
         return send(200, { ok: true, settings: next });
+      }
+
+      if (method === 'POST' && b === 'expense') {
+        const body = await readBody(req);
+        const amount = Math.round(L.num(body.amount));
+        if (amount <= 0) return send(400, { error: 'Amount likhein' });
+        const ex = {
+          id: /^e_\w{4,20}$/.test(body.id || '') ? body.id : 'e_' + crypto.randomBytes(5).toString('hex'),
+          date: /^\d{4}-\d{2}-\d{2}$/.test(body.date || '') ? body.date : new Date().toISOString().slice(0, 10),
+          category: str(body.category, 40) || 'Other', note: str(body.note, 120), amount,
+        };
+        const list = await getExpenses();
+        const i = list.findIndex((x) => x.id === ex.id);
+        if (i >= 0) list[i] = ex; else list.unshift(ex);
+        await db.set('expenses', list);
+        return send(200, { ok: true });
+      }
+      if (method === 'DELETE' && b === 'expense' && c) {
+        await db.set('expenses', (await getExpenses()).filter((x) => x.id !== c));
+        return send(200, { ok: true });
       }
 
       if (method === 'POST' && b === 'coupon') {
