@@ -174,6 +174,21 @@ footer .fl{width:84px;height:84px;object-fit:contain;border-radius:50%}
 footer .mono{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--gold);color:var(--gold2);font:600 46px 'Cormorant Garamond',serif}
 footer a{color:var(--gold2)}
 .wa{position:fixed;bottom:18px;left:18px;z-index:15;background:#25d366;color:#fff;border-radius:999px;padding:11px 18px;font-weight:600;text-decoration:none;box-shadow:0 6px 20px #0006;display:none}
+
+.soc{display:flex;gap:12px;justify-content:center;margin:6px 0}
+.soc a{width:48px;height:48px;border-radius:50%;border:1px solid var(--gold);display:grid;place-items:center;color:var(--gold2);transition:.2s}
+.soc a:hover{background:var(--gold);color:var(--on);transform:translateY(-3px)}
+.soc svg{width:22px;height:22px}
+.pmbox{display:grid;gap:8px}
+.pm1{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:11px 12px;cursor:pointer;background:var(--bg2)}
+.pm1 input{width:auto;accent-color:var(--gold)}
+.pm1.on{border-color:var(--gold);background:var(--soft)}
+.sub{margin-left:16px;display:grid;gap:8px}
+.acct{border:1px dashed var(--gold);border-radius:12px;padding:12px;display:grid;gap:3px;font-size:14px}
+.acct b{color:var(--gold2)}
+.acct .num{font:600 18px 'Courier New',monospace;letter-spacing:1px;word-break:break-all}
+.acct button{justify-self:start;border:1px solid var(--gold);color:var(--gold2);border-radius:8px;padding:4px 12px;font-size:13px;margin-top:4px}
+.dnote{font-size:12.5px;color:var(--mute);background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 @media(max-width:820px){.hg{grid-template-columns:1fr;text-align:center}.hero p{margin-inline:auto}.btns,.chips{justify-content:center}.hart{min-height:300px;order:-1}.ring.a{width:260px;height:260px}.ring.b{width:340px;height:340px}.hero{padding:34px 0 44px}.eyebrow{justify-content:center}}
 @media(max-width:720px){.pd{grid-template-columns:1fr}.navlinks{display:none}.info h2{font-size:32px}.two{grid-template-columns:1fr}.tiles{grid-template-columns:1fr}.tile{display:flex;align-items:center;gap:16px;padding:18px}.tile svg.ic{margin:0;flex:none}section{padding:38px 0}.brand b{font-size:21px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
@@ -254,6 +269,7 @@ footer a{color:var(--gold2)}
   <div class="serif gtext" style="font-size:32px" id="fName"></div>
   <div id="tag" style="max-width:420px"></div>
   <div id="fInfo"></div>
+  <div class="soc" id="soc"></div>
   <div style="opacity:.7">© <span id="yr"></span> All rights reserved.</div>
 </div></footer>
 <a class="wa" id="waFloat" target="_blank" rel="noopener">WhatsApp Us</a>
@@ -276,7 +292,8 @@ try{cart=JSON.parse(localStorage.getItem('zcart')||'[]')}catch{}
 let coupon=null;
 
 const img=(p,i=0)=>p.images&&p.images[i]?`<img loading="lazy" alt="${esc(p.name)}" src="/api/img/${p.images[i]}">`:BOTTLE;
-const minV=p=>{const a=p.variants.filter(v=>v.stock>0);return (a.length?a:p.variants).reduce((m,v)=>v.final<m.final?v:m)};
+const isT=v=>/tester/i.test(v.size);
+const minV=p=>{const main=p.variants.filter(v=>!isT(v));const pool=main.length?main:p.variants;const a=pool.filter(v=>v.stock>0);return (a.length?a:pool).reduce((m,v)=>v.final<m.final?v:m)};
 const soldOut=p=>p.variants.every(v=>v.stock<=0);
 
 async function init(){
@@ -295,7 +312,11 @@ async function init(){
   const g=S.globalDiscount;
   if(g.pct>0){const sb=$('#sale');sb.style.display='grid';sb.innerHTML=`<div><b>${g.pct}%</b>OFF<br>${esc(g.label||'SALE')}</div>`}
   $('#fName').textContent=S.shopName;
-  $('#fInfo').innerHTML=[S.address&&esc(S.address),S.phone&&'Call: '+esc(S.phone),S.instagram&&'Instagram: '+esc(S.instagram)].filter(Boolean).join('<br>');
+  $('#fInfo').innerHTML=[S.address&&esc(S.address),S.phone&&'Call: '+esc(S.phone)].filter(Boolean).join('<br>');
+  const su=(v,b)=>{v=String(v||'').trim();if(!v)return '';if(/^https?:\/\//i.test(v))return v;if(/^[\w-]+(\.[\w-]+)+\//.test(v))return 'https://'+v;return b+v.replace(/^@/,'')};
+  const IC={ig:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>',fb:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>',wa:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.6-4.6A8.5 8.5 0 1112 20.5a8.4 8.4 0 01-4-1z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-.8.8a4 4 0 01-1.8-1.8l.8-.8-1-2z"/></svg>'};
+  const soc=[[su(S.instagram,'https://instagram.com/'),'ig','Instagram'],[su(S.facebook,'https://facebook.com/'),'fb','Facebook'],[S.whatsapp?'https://wa.me/'+S.whatsapp:'','wa','WhatsApp']].filter(x=>/^https?:\/\//i.test(x[0]));
+  $('#soc').innerHTML=soc.map(([u,k,n])=>`<a href="${esc(u)}" target="_blank" rel="noopener" aria-label="${n}" title="${n}">${IC[k]}</a>`).join('');
   $('#yr').textContent=new Date().getFullYear();
   if(S.whatsapp){const w=$('#waFloat');w.href='https://wa.me/'+S.whatsapp;w.style.display='block'}
   // marquee of real notes from products
@@ -380,8 +401,9 @@ function lines(){
 function calc(){
   const L=lines(),sub=L.reduce((s,l)=>s+l.v.final*l.qty,0);
   const cd=coupon?Math.min(coupon.discount,sub):0,after=sub-cd;
+  const fixed=S.deliveryMode==='fixed';
   const free=S.freeDeliveryAbove>0&&after>=S.freeDeliveryAbove;
-  const del=L.length?(free?0:S.deliveryCharge):0;
+  const del=(L.length&&fixed)?(free?0:S.deliveryCharge):0;
   return {L,sub,cd,del,total:after+del};
 }
 function renderCart(){
@@ -395,7 +417,7 @@ function renderCart(){
     <div class="cpn"><input id="cin" placeholder="Coupon code" value="${esc(coupon?coupon.code:'')}"><button id="capply">Apply</button></div><div class="msg" id="cmsg"></div>
     <div class="row"><span>Subtotal</span><span>${rs(t.sub)}</span></div>
     ${t.cd?`<div class="row"><span>Coupon (${esc(coupon.code)})</span><span>− ${rs(t.cd)}</span></div>`:''}
-    <div class="row"><span>Delivery</span><span>${t.del?rs(t.del):'FREE'}</span></div>
+    ${S.deliveryMode==='fixed'?`<div class="row"><span>Delivery</span><span>${t.del?rs(t.del):'FREE'}</span></div>`:`<div class="dnote">${esc(S.deliveryNote)}</div>`}
     <div class="row t"><span>Total</span><span>${rs(t.total)}</span></div>
     <button class="btn" id="checkout">Checkout (Cash on Delivery)</button>`:'';
 }
@@ -415,6 +437,34 @@ $('#drawer').addEventListener('click',async e=>{
 });
 
 // ----- checkout -----
+
+// ----- payment UI -----
+const PAYN={bank:'Bank Account',easypaisa:'Easypaisa',jazzcash:'JazzCash'};
+const PAYK={'Bank Transfer':'bank','Easypaisa':'easypaisa','JazzCash':'jazzcash'};
+let CK_TOTAL=0;
+const onlineMethods=()=>{const P=S.payments||{};return ['bank','easypaisa','jazzcash'].filter(k=>P[k]&&P[k].enabled&&P[k].number)};
+function acctBox(k,total){
+  const a=(S.payments||{})[k]||{};
+  return `<div class="acct"><b>${PAYN[k]}</b>${k==='bank'&&a.bankName?`<span>Bank: ${esc(a.bankName)}</span>`:''}${a.title?`<span>Account title: ${esc(a.title)}</span>`:''}<span class="num">${esc(a.number)}</span>
+   <button type="button" data-copy="${esc(a.number)}">Copy number</button>
+   <span style="color:var(--mute);font-size:13px;margin-top:4px">Send ${rs(total)} to this account${S.whatsapp?', then send the payment screenshot on WhatsApp':''}.</span></div>`;
+}
+function payUI(){
+  const P=S.payments||{},on=onlineMethods(),codOk=!P.cod||P.cod.enabled!==false||!on.length,def=codOk?'cod':'online';
+  return `<div class="pmbox" id="pmbox"><div class="cat">Payment method</div>
+   ${codOk?`<label class="pm1"><input type="radio" name="pt" value="cod" ${def==='cod'?'checked':''}>Cash on Delivery</label>`:''}
+   ${on.length?`<label class="pm1"><input type="radio" name="pt" value="online" ${def==='online'?'checked':''}>Online Payment</label>
+   <div class="sub" id="psub">${on.map((k,i)=>`<label class="pm1"><input type="radio" name="pm" value="${k}" ${i===0?'checked':''}>${PAYN[k]}</label>`).join('')}</div>`:''}
+   <div id="pdet"></div></div>`;
+}
+function updPay(){
+  const box=$('#pmbox');if(!box)return;
+  const pt=(box.querySelector('[name=pt]:checked')||{}).value||'cod',pm=(box.querySelector('[name=pm]:checked')||{}).value;
+  const sub=$('#psub');if(sub)sub.style.display=pt==='online'?'grid':'none';
+  box.querySelectorAll('.pm1').forEach(l=>l.classList.toggle('on',l.querySelector('input').checked&&(l.querySelector('input').name==='pt'||pt==='online')));
+  $('#pdet').innerHTML=pt==='online'&&pm?acctBox(pm,CK_TOTAL)+`<input name="ref" placeholder="Transaction ID / last 4 digits (optional)" style="margin-top:8px">`
+    :`<div class="dnote">Pay ${rs(CK_TOTAL)} in cash when your parcel arrives.</div>`;
+}
 function openCheckout(){
   const t=calc();let sv={};try{sv=JSON.parse(localStorage.getItem('zcust')||'{}')}catch{}
   $('#cm').innerHTML=`<button class="x" id="cc">×</button><form class="form" id="cf"><h2>Delivery Details</h2>
@@ -422,26 +472,31 @@ function openCheckout(){
     <div class="two"><input name="phone" placeholder="Phone / WhatsApp *" required inputmode="tel" value="${esc(sv.phone)}"><input name="city" placeholder="City *" required value="${esc(sv.city)}"></div>
     <textarea name="address" rows="3" placeholder="Complete address *" required>${esc(sv.address)}</textarea>
     <input name="note" placeholder="Note (optional)">
-    <div class="row"><span>Payment</span><span>Cash on Delivery</span></div>
+    ${payUI()}
     <div class="row t"><span>Total</span><span>${rs(t.total)}</span></div>
+    ${S.deliveryMode==='fixed'?'':`<div class="dnote">${esc(S.deliveryNote)}</div>`}
     <div class="msg er" id="cer"></div>
     <button class="btn" id="place">Place Order</button></form>`;
-  $('#cov').classList.add('on');
+  CK_TOTAL=t.total;updPay();$('#drawer').classList.remove('on');$('#cov').classList.add('on');
 }
 $('#cov').addEventListener('click',e=>{if(e.target.id==='cov'||e.target.id==='cc'||e.target.id==='done')$('#cov').classList.remove('on')});
+$('#cov').addEventListener('change',e=>{if(e.target.name==='pt'||e.target.name==='pm')updPay()});
+$('#cov').addEventListener('click',e=>{const c=e.target.closest('[data-copy]');if(c){try{navigator.clipboard.writeText(c.dataset.copy);c.textContent='Copied ✓'}catch{}}});
 $('#cov').addEventListener('submit',async e=>{
   e.preventDefault();const f=new FormData(e.target),cu=Object.fromEntries(f);
   const btn=$('#place');btn.disabled=true;btn.textContent='Placing...';
   try{
-    const r=await fetch('/api/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:cart,customer:cu,coupon:coupon&&coupon.code})});
+    const r=await fetch('/api/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:cart,customer:cu,coupon:coupon&&coupon.code,payment:{method:cu.pt==='online'&&cu.pm?cu.pm:'cod',ref:cu.ref||''}})});
     const d=await r.json();
     if(!r.ok){$('#cer').textContent=d.error||'Error';btn.disabled=false;btn.textContent='Place Order';
       if(/bacha|available/.test(d.error||'')){const s=await (await fetch('/api/shop')).json();P=s.products;renderCart();render()}return}
     try{localStorage.setItem('zcust',JSON.stringify({name:cu.name,phone:cu.phone,city:cu.city,address:cu.address}))}catch{}
     const o=d.order;cart=[];coupon=null;save();renderCart();$('#drawer').classList.remove('on');
-    const msg=`New order ${o.id}\nName: ${o.customer.name}\nPhone: ${o.customer.phone}\n`+o.lines.map(l=>`• ${l.name} ${l.size} x${l.qty} = ${rs(l.total)}`).join('\n')+`\nTotal: ${rs(o.total)} (COD)`;
-    $('#cm').innerHTML=`<div class="ok-box"><h2>Thank you!</h2><p>Your order <b>${esc(o.id)}</b> has been placed.<br>Total to pay on delivery: <b>${rs(o.total)}</b></p>
-      <p style="color:var(--mute)">We will contact you on ${esc(o.customer.phone)} to confirm.</p>
+    const msg=`New order ${o.id}\nName: ${o.customer.name}\nPhone: ${o.customer.phone}\n`+o.lines.map(l=>`• ${l.name} ${l.size} x${l.qty} = ${rs(l.total)}`).join('\n')+`\nTotal: ${rs(o.total)}\nPayment: ${o.payment}${o.paymentRef?' (Txn '+o.paymentRef+')':''}${o.deliveryNote?'\nDelivery charges as per area (paid separately)':''}`;
+    const online=o.payment!=='COD',pk=PAYK[o.payment];
+    $('#cm').innerHTML=`<div class="ok-box"><h2>Thank you!</h2><p>Your order <b>${esc(o.id)}</b> has been placed.<br>${online?`Amount to pay now: <b>${rs(o.total)}</b>`:`Total to pay on delivery: <b>${rs(o.total)}</b>`}</p>
+      ${online&&pk?acctBox(pk,o.total):''}${o.deliveryNote?`<div class="dnote">${esc(o.deliveryNote)}</div>`:''}
+      <p style="color:var(--mute)">${online?'We will confirm your order after receiving the payment.':'We will contact you on '+esc(o.customer.phone)+' to confirm.'}</p>
       ${S.whatsapp?`<a class="btn" target="_blank" rel="noopener" href="https://wa.me/${S.whatsapp}?text=${encodeURIComponent(msg)}">Confirm on WhatsApp</a>`:''}
       <a class="btn ghost" target="_blank" href="/invoice?id=${encodeURIComponent(o.id)}&t=${encodeURIComponent(o.token||'')}">View / Print Invoice</a>
       <button class="btn ghost" id="done">Continue Shopping</button></div>`;
