@@ -69,7 +69,8 @@ module.exports = async (req, res) => {
   };
   try {
     const url = new URL(req.url, 'http://x');
-    const parts = url.pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
+    const raw = url.searchParams.has('path') ? url.searchParams.get('path') : url.pathname.replace(/^\/api\/?/, '');
+const parts = raw.split('/').filter(Boolean).map(decodeURIComponent);
     const method = req.method;
     const [a, b, c] = parts;
 
