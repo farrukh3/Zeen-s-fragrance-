@@ -64,7 +64,10 @@ header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 8
 .chips span{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:6px 13px;background:color-mix(in srgb,var(--card) 60%,transparent)}
 .chips svg{width:15px;height:15px;color:var(--gold)}
 .hart{position:relative;display:grid;place-items:center;min-height:380px}
-.hart img.himg{width:100%;max-width:440px;aspect-ratio:4/5;object-fit:cover;border-radius:200px 200px 24px 24px;border:1px solid var(--gold);box-shadow:0 30px 70px #0006}
+.hart:before{content:'';position:absolute;width:min(78%,380px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--gold) 38%,transparent),transparent 68%)}
+.hart img.himg{position:relative;width:100%;max-width:460px;max-height:540px;object-fit:contain;border:0;border-radius:0;animation:fl 6s ease-in-out infinite}
+.hart img.himg:not(.mult){filter:drop-shadow(0 26px 34px rgba(0,0,0,.35))}
+.hart img.himg.mult{mix-blend-mode:multiply}
 .hart svg.bot{width:min(78%,340px);filter:drop-shadow(0 25px 40px color-mix(in srgb,var(--gold) 30%,transparent));animation:fl 6s ease-in-out infinite}
 .ring{position:absolute;border:1px solid var(--gold);border-radius:50%;opacity:.35}
 .ring.a{width:340px;height:340px}.ring.b{width:440px;height:440px;opacity:.18}
@@ -288,7 +291,7 @@ async function init(){
   $('#ann').textContent=S.announcement||'';$('#ann').style.display=S.announcement?'':'none';
   $('#heroT').textContent=S.heroTitle;$('#heroS').textContent=S.heroSub;
   $('#tag').textContent=S.tagline||'';
-  $('#heroArt').innerHTML=S.heroImage?`<img class="himg" alt="" src="/api/img/${S.heroImage}">`:BOTTLE.replace('<svg','<svg class="bot"');
+  $('#heroArt').innerHTML=S.heroImage?`<img class="himg ${lum(S.theme.bg)>.5?'mult':''}" alt="" src="/api/img/${S.heroImage}">`:BOTTLE.replace('<svg','<svg class="bot"');
   const g=S.globalDiscount;
   if(g.pct>0){const sb=$('#sale');sb.style.display='grid';sb.innerHTML=`<div><b>${g.pct}%</b>OFF<br>${esc(g.label||'SALE')}</div>`}
   $('#fName').textContent=S.shopName;
