@@ -443,6 +443,7 @@ $('#cov').addEventListener('submit',async e=>{
     $('#cm').innerHTML=`<div class="ok-box"><h2>Thank you!</h2><p>Your order <b>${esc(o.id)}</b> has been placed.<br>Total to pay on delivery: <b>${rs(o.total)}</b></p>
       <p style="color:var(--mute)">We will contact you on ${esc(o.customer.phone)} to confirm.</p>
       ${S.whatsapp?`<a class="btn" target="_blank" rel="noopener" href="https://wa.me/${S.whatsapp}?text=${encodeURIComponent(msg)}">Confirm on WhatsApp</a>`:''}
+      <a class="btn ghost" target="_blank" href="/invoice?id=${encodeURIComponent(o.id)}&t=${encodeURIComponent(o.token||'')}">View / Print Invoice</a>
       <button class="btn ghost" id="done">Continue Shopping</button></div>`;
     const s=await (await fetch('/api/shop')).json();P=s.products;render();
   }catch{ $('#cer').textContent='Network error, try again.';btn.disabled=false;btn.textContent='Place Order'}
