@@ -31,7 +31,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // ---------- data helpers ----------
 async function getSettings() {
   const s = (await db.get('settings')) || {};
-  return { ...L.DEFAULT_SETTINGS, ...s, globalDiscount: { ...L.DEFAULT_SETTINGS.globalDiscount, ...(s.globalDiscount || {}) } };
+  return {
+    ...L.DEFAULT_SETTINGS, ...s,
+    globalDiscount: { ...L.DEFAULT_SETTINGS.globalDiscount, ...(s.globalDiscount || {}) },
+    theme: { ...L.DEFAULT_SETTINGS.theme, ...(s.theme || {}) },
+  };
 }
 async function getProducts() {
   let p = await db.get('products');
@@ -70,7 +74,7 @@ module.exports = async (req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
     const raw = url.searchParams.has('path') ? url.searchParams.get('path') : url.pathname.replace(/^\/api\/?/, '');
-const parts = raw.split('/').filter(Boolean).map(decodeURIComponent);
+    const parts = raw.split('/').filter(Boolean).map(decodeURIComponent);
     const method = req.method;
     const [a, b, c] = parts;
 
@@ -239,6 +243,16 @@ const parts = raw.split('/').filter(Boolean).map(decodeURIComponent);
           freeDeliveryAbove: Math.max(0, Math.round(L.num(body.freeDeliveryAbove))),
           globalDiscount: { pct: L.clamp(Math.round(L.num(g.pct)), 0, 90), label: str(g.label, 60) },
         };
+        // design: theme colors, logo and hero image (kept as-is when not sent)
+        const hex = (v, d) => (/^#[0-9a-fA-F]{6}$/.test(v || '') ? v : d);
+        const imgId = (v, d) => (v === undefined ? d : /^[\w-]{4,40}$/.test(v || '') ? v : '');
+        if (body.theme) {
+          const t = body.theme, ct = cur.theme;
+          next.theme = { bg: hex(t.bg, ct.bg), card: hex(t.card, ct.card), accent: hex(t.accent, ct.accent), ink: hex(t.ink, ct.ink) };
+        }
+        next.logo = imgId(body.logo, cur.logo);
+        next.heroImage = imgId(body.heroImage, cur.heroImage);
+        for (const k of ['logo', 'heroImage']) if (cur[k] && cur[k] !== next[k]) await db.del('img:' + cur[k]);
         await db.set('settings', next);
         return send(200, { ok: true, settings: next });
       }
