@@ -35,6 +35,7 @@ async function getSettings() {
     ...L.DEFAULT_SETTINGS, ...s,
     globalDiscount: { ...L.DEFAULT_SETTINGS.globalDiscount, ...(s.globalDiscount || {}) },
     theme: { ...L.DEFAULT_SETTINGS.theme, ...(s.theme || {}) },
+    payments: Object.fromEntries(Object.keys(L.DEFAULT_SETTINGS.payments).map((k) => [k, { ...L.DEFAULT_SETTINGS.payments[k], ...((s.payments || {})[k] || {}) }])),
   };
 }
 async function getProducts() {
@@ -116,13 +117,20 @@ module.exports = async (req, res) => {
         return send(400, { error: 'Naam, phone, city aur address zaroori hain' });
       if (!/^[+\d][\d\s-]{6,18}$/.test(customer.phone)) return send(400, { error: 'Phone number sahi likhein' });
       const [settings, products, coupons] = await Promise.all([getSettings(), getProducts(), getCoupons()]);
+      const pm = (body.payment && body.payment.method) || 'cod';
+      const PAYL = { cod: 'COD', bank: 'Bank Transfer', easypaisa: 'Easypaisa', jazzcash: 'JazzCash' };
+      const pcfg = settings.payments[pm];
+      if (!PAYL[pm] || !pcfg || (pm === 'cod' ? pcfg.enabled === false : !(pcfg.enabled && pcfg.number)))
+        return send(400, { error: 'Yeh payment method abhi available nahi hai' });
       const lines = L.buildLines(body.items, products, settings, { onlyActive: true });
       const coupon = coupons.find((x) => x.code === str(body.coupon, 30).toUpperCase());
       const t = L.totals(lines, settings, coupon);
       L.applyStock(products, lines, -1);
       const { no, id } = await nextOrderId();
       const order = {
-        id, no, token: newToken(), createdAt: new Date().toISOString(), source: 'online', status: 'pending', payment: 'COD',
+        id, no, token: newToken(), createdAt: new Date().toISOString(), source: 'online', status: 'pending', payment: PAYL[pm],
+        paymentRef: pm === 'cod' ? '' : str(body.payment.ref, 60), paid: false,
+        deliveryNote: settings.deliveryMode === 'fixed' ? '' : settings.deliveryNote,
         customer, lines, ...t, coupon: coupon && t.discount ? coupon.code : '',
       };
       await db.set('products', products);
@@ -140,7 +148,7 @@ module.exports = async (req, res) => {
       const tokOk = !!(o && o.token && t.length === o.token.length && crypto.timingSafeEqual(Buffer.from(t), Buffer.from(o.token)));
       if (!o || !(admin || tokOk)) return send(404, { error: 'Invoice nahi mila' });
       const st = await getSettings();
-      const shop = { shopName: st.shopName, logo: st.logo, address: st.address, phone: st.phone, whatsapp: st.whatsapp, instagram: st.instagram, invoiceNote: st.invoiceNote, invoiceTerms: st.invoiceTerms, accent: st.theme.accent };
+      const shop = { shopName: st.shopName, logo: st.logo, address: st.address, phone: st.phone, whatsapp: st.whatsapp, instagram: st.instagram, facebook: st.facebook, invoiceNote: st.invoiceNote, invoiceTerms: st.invoiceTerms, accent: st.theme.accent };
       return send(200, { order: admin ? o : L.stripCost(o), shop });
     }
 
@@ -206,6 +214,16 @@ module.exports = async (req, res) => {
         return send(200, { ok: true });
       }
 
+      if (method === 'POST' && b === 'order' && c && parts[3] === 'paid') {
+        const body = await readBody(req);
+        const orders = await getOrders();
+        const o = orders.find((x) => x.id === c);
+        if (!o) return send(404, { error: 'Order nahi mila' });
+        o.paid = body.paid !== false;
+        await db.set('orders', orders);
+        return send(200, { ok: true });
+      }
+
       if (method === 'POST' && b === 'order' && c) {
         const body = await readBody(req);
         const status = str(body.status, 20);
@@ -220,6 +238,7 @@ module.exports = async (req, res) => {
           await db.set('products', products);
         }
         o.status = status;
+        if (status === 'delivered' && o.payment === 'COD') o.paid = true;
         await db.set('orders', orders);
         return send(200, { ok: true });
       }
@@ -234,7 +253,7 @@ module.exports = async (req, res) => {
         const { no, id } = await nextOrderId();
         const order = {
           id, no, token: newToken(), createdAt: new Date().toISOString(), source: 'store', status: 'delivered',
-          payment: ['Cash', 'Card', 'Bank Transfer', 'JazzCash/Easypaisa'].includes(body.payment) ? body.payment : 'Cash',
+          payment: ['Cash', 'Card', 'Bank Transfer', 'Easypaisa', 'JazzCash'].includes(body.payment) ? body.payment : 'Cash', paid: true,
           customer: { name: str(body.customerName, 80) || 'Walk-in', phone: str(body.customerPhone, 20), city: '', address: '', note: '' },
           lines, ...t, coupon: '',
         };
@@ -255,7 +274,7 @@ module.exports = async (req, res) => {
           tagline: str(body.tagline, 120), heroTitle: str(body.heroTitle, 80), heroSub: str(body.heroSub, 200),
           announcement: str(body.announcement, 160),
           whatsapp: str(body.whatsapp, 20).replace(/\D/g, ''),
-          phone: str(body.phone, 30), address: str(body.address, 200), instagram: str(body.instagram, 100),
+          phone: str(body.phone, 30), address: str(body.address, 200), instagram: str(body.instagram, 150),
           deliveryCharge: Math.max(0, Math.round(L.num(body.deliveryCharge))),
           freeDeliveryAbove: Math.max(0, Math.round(L.num(body.freeDeliveryAbove))),
           globalDiscount: { pct: L.clamp(Math.round(L.num(g.pct)), 0, 90), label: str(g.label, 60) },
@@ -267,6 +286,16 @@ module.exports = async (req, res) => {
           const t = body.theme, ct = cur.theme;
           next.theme = { bg: hex(t.bg, ct.bg), card: hex(t.card, ct.card), accent: hex(t.accent, ct.accent), ink: hex(t.ink, ct.ink) };
         }
+        next.facebook = body.facebook === undefined ? cur.facebook : str(body.facebook, 150);
+        next.deliveryMode = body.deliveryMode === undefined ? cur.deliveryMode : body.deliveryMode === 'fixed' ? 'fixed' : 'note';
+        next.deliveryNote = body.deliveryNote === undefined ? cur.deliveryNote : str(body.deliveryNote, 220);
+        if (body.payments) {
+          const bp = body.payments;
+          const acct = (k) => { const x = bp[k] || {}; const num = str(x.number, 60); return { enabled: !!x.enabled && !!num, bankName: str(x.bankName, 60), title: str(x.title, 60), number: num }; };
+          next.payments = { cod: { enabled: !bp.cod || bp.cod.enabled !== false }, bank: acct('bank'), easypaisa: acct('easypaisa'), jazzcash: acct('jazzcash') };
+          const P = next.payments;
+          if (!P.cod.enabled && !P.bank.enabled && !P.easypaisa.enabled && !P.jazzcash.enabled) P.cod.enabled = true;
+        } else next.payments = cur.payments;
         next.invoiceNote = body.invoiceNote === undefined ? cur.invoiceNote : str(body.invoiceNote, 300);
         next.invoiceTerms = body.invoiceTerms === undefined ? cur.invoiceTerms : str(body.invoiceTerms, 400);
         next.logo = imgId(body.logo, cur.logo);
