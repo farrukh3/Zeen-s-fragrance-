@@ -66,6 +66,11 @@ tr:last-child td{border-bottom:0}
 .lg{font-size:12px;color:var(--mute);margin:-4px 0 4px}.lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin:0 4px 0 10px;vertical-align:middle}.lg i:first-child{margin-left:0}
 @media(max-width:760px){.pos{grid-template-columns:1fr}.g2,.g3{grid-template-columns:1fr}.vr{grid-template-columns:1fr 1fr}}
 @media print{.top,.tabs,.bar,.btn{display:none!important}}
+
+.annp{border-radius:8px;overflow:hidden;text-align:center;padding:8px 12px;font-size:13px;font-weight:600;background:linear-gradient(90deg,#c9a24b,#e6c775,#c9a24b);color:#14110a}
+.annp.b{font-weight:800}.annp .t{display:inline-block}.annp.sl .t{white-space:nowrap;padding-left:100%;animation:annsl var(--d,12s) linear infinite}.annp.bl{animation:annbl 1s ease-in-out infinite}
+@keyframes annsl{from{transform:translateX(0)}to{transform:translateX(-100%)}}@keyframes annbl{0%,45%{opacity:1}55%,100%{opacity:.2}}
+.chk{display:flex;gap:8px;align-items:center;flex-direction:row!important}.chk input{width:auto}
 </style>
 </head>
 <body>
@@ -87,22 +92,25 @@ async function api(path,method='GET',body){
 }
 function showLogin(){
   $('#app').innerHTML=`<div class="login"><form class="lbox" id="lf"><h1>Zeen's Admin</h1><span class="mut">Enter your admin password to manage the store.</span>
-  <input type="password" id="pw" placeholder="Password" autofocus required><div class="er" id="le"></div><button class="btn">Login</button></form></div>`;
-  $('#lf').onsubmit=async e=>{e.preventDefault();try{await api('admin/login','POST',{password:$('#pw').value});await load()}catch(x){$('#le').textContent=x.message}};
+  <input id="un" placeholder="Employee ID (owner: leave empty)" autocomplete="username" autocapitalize="none"><input type="password" id="pw" placeholder="Password" required><div class="er" id="le"></div><button class="btn">Login</button></form></div>`;
+  $('#lf').onsubmit=async e=>{e.preventDefault();try{await api('admin/login','POST',{username:$('#un').value,password:$('#pw').value});await load()}catch(x){$('#le').textContent=x.message}};
 }
 async function load(){
   try{D=await api('admin/data');}catch(e){if(e.message!=='login')showLogin();return}
   draw();
 }
-const tabs=[['dash','Dashboard'],['sell','Sell (In-Store)'],['prod','Products'],['ord','Orders'],['req','Requests'],['acc','Accounts'],['off','Offers'],['set','Settings']];
+const can=k=>!D||!D.me||(D.me.perms||[]).includes(k);
+const tabs=[['dash','Dashboard'],['sell','Sell (In-Store)'],['prod','Products'],['ord','Orders'],['req','Requests'],['hist','History'],['rev','Reviews'],['acc','Accounts'],['off','Offers'],['set','Settings'],['staff','Staff']];
 function draw(){
   const pending=D.orders.filter(o=>o.status==='pending').length;
+  const vis=tabs.filter(([k])=>k==='staff'?(D.me&&D.me.owner):can(k));if(!vis.some(([k])=>k===tab))tab=vis[0]?vis[0][0]:'dash';
+  const pendRev=(D.reviews||[]).filter(r=>r.status==='pending').length;
   const openReq=(D.requests||[]).filter(r=>r.status==='open').length;
-  $('#app').innerHTML=`<div class="top"><span>${D.settings.logo?`<img src="/api/img/${D.settings.logo}" style="height:34px;width:34px;object-fit:contain;border-radius:50%;vertical-align:middle;margin-right:8px">`:''}<b>Zeen's Admin</b></span><div class="tabs">${tabs.map(([k,v])=>`<button class="tab ${k===tab?'on':''}" data-t="${k}">${v}${k==='ord'&&pending?` (${pending})`:''}${k==='req'&&openReq?` (${openReq})`:''}</button>`).join('')}</div>
+  $('#app').innerHTML=`<div class="top"><span>${D.settings.logo?`<img src="/api/img/${D.settings.logo}" style="height:34px;width:34px;object-fit:contain;border-radius:50%;vertical-align:middle;margin-right:8px">`:''}<b>Zeen's Admin</b>${D.me&&!D.me.owner?` <span class="pill">${esc(D.me.name)}</span>`:''}</span><div class="tabs">${vis.map(([k,v])=>`<button class="tab ${k===tab?'on':''}" data-t="${k}">${v}${k==='ord'&&pending?` (${pending})`:''}${k==='req'&&openReq?` (${openReq})`:''}${k==='rev'&&pendRev?` (${pendRev})`:''}</button>`).join('')}</div>
   <span><a class="btn g s" href="/" target="_blank" style="text-decoration:none;display:inline-block">View Shop</a> <button class="btn g s" id="lo">Logout</button></span></div><main id="main"></main>`;
   $('#lo').onclick=async()=>{await api('admin/logout','POST');D=null;showLogin()};
   document.querySelectorAll('.tab').forEach(b=>b.onclick=async()=>{tab=b.dataset.t;await load()});
-  ({dash,sell,prod,ord,req,acc,off,set}[tab])();
+  ({dash,sell,prod,ord,req,hist,rev,acc,off,set,staff}[tab])();
 }
 const M=h=>$('#main').innerHTML=h;
 const stock=p=>p.variants.reduce((s,v)=>s+v.stock,0);
@@ -172,7 +180,7 @@ function pform(p){
 }
 function readVars(){editing.variants=[...document.querySelectorAll('.vr')].map(r=>({size:r.querySelector('.s').value,price:+r.querySelector('.p').value,cost:+r.querySelector('.c').value,discount:+r.querySelector('.d').value,stock:+r.querySelector('.k').value}))}
 function drawVars(){
-  $('#f_vars').innerHTML=editing.variants.map((v,i)=>`<div class="vr"><label>Size<input class="s" value="${esc(v.size)}" placeholder="50ml"></label><label>Price (Rs.)<input class="p" type="number" min="0" value="${v.price}"></label><label>Cost (Rs.)<input class="c" type="number" min="0" value="${v.cost||0}"></label><label>Discount %<input class="d" type="number" min="0" max="95" value="${v.discount}"></label><label>Stock<input class="k" type="number" min="0" value="${v.stock}"></label><button class="btn r s" data-rv="${i}">✕</button></div>`).join('');
+  $('#f_vars').innerHTML=editing.variants.map((v,i)=>`<div class="vr"><label>Size<input class="s" value="${esc(v.size)}" placeholder="50ml"></label><label>Price (Rs.)<input class="p" type="number" min="0" value="${v.price}"></label><label ${can('acc')?'':'style="display:none"'}>Cost (Rs.)<input class="c" type="number" min="0" value="${v.cost||0}"></label><label>Discount %<input class="d" type="number" min="0" max="95" value="${v.discount}"></label><label>Stock<input class="k" type="number" min="0" value="${v.stock}"></label><button class="btn r s" data-rv="${i}">✕</button></div>`).join('');
   $('#f_vars').onclick=e=>{const b=e.target.closest('[data-rv]');if(b){readVars();editing.variants.splice(+b.dataset.rv,1);drawVars()}};
 }
 function drawImgs(){
@@ -219,6 +227,114 @@ function ord(){
   $('#main').onchange=async e=>{const s=e.target.closest('[data-o]');if(!s)return;
     if(s.value==='cancelled'&&!confirm('Cancel this order and return stock?')){return ord()}
     try{await api('admin/order/'+s.dataset.o,'POST',{status:s.value});toast('Updated');await load()}catch(x){toast(x.message,1)}};
+}
+
+// ---------- sales history / search ----------
+let H={q:'',src:'all',st:'all',pay:'all',paid:'all',from:'',to:'',view:'orders'};
+function histList(){
+  const q=H.q.trim().toLowerCase(),dg=q.replace(/\D/g,'');
+  const f=H.from?new Date(H.from+'T00:00:00'):null,t=H.to?new Date(H.to+'T23:59:59'):null;
+  return D.orders.filter(o=>{
+    const d=new Date(o.createdAt);
+    if(f&&d<f)return false;if(t&&d>t)return false;
+    if(H.src!=='all'&&o.source!==H.src)return false;
+    if(H.st!=='all'&&o.status!==H.st)return false;
+    if(H.pay!=='all'&&(H.pay==='COD'?o.payment!=='COD':H.pay==='Online'?!['Bank Transfer','Easypaisa','JazzCash'].includes(o.payment)||o.source==='store':o.payment!==H.pay))return false;
+    if(H.paid!=='all'){const isPaid=o.source==='store'||o.paid||(o.payment==='COD'&&o.status==='delivered');if((H.paid==='paid')!==isPaid)return false}
+    if(q){const hay=(o.id+' '+o.customer.name+' '+o.customer.phone+' '+o.customer.city+' '+(o.customer.address||'')+' '+o.lines.map(l=>l.name+' '+l.size).join(' ')+' '+(o.paymentRef||'')).toLowerCase();
+      if(!hay.includes(q)&&!(dg.length>=4&&String(o.customer.phone).replace(/\D/g,'').includes(dg)))return false}
+    return true;
+  });
+}
+function hist(){
+  const sel=(id,v,opts)=>`<select id="${id}">${opts.map(([k,l])=>`<option value="${k}" ${v===k?'selected':''}>${l}</option>`).join('')}</select>`;
+  M(`<h2>Sales History</h2><p class="mut">Invoice number, customer ka naam/phone, ya perfume ka naam likh kar search karein. Filters se date, online/shop, status aur payment alag kar sakte hain.</p>
+  <div class="panel"><div class="bar"><input id="hq" placeholder="Search: ZF-1001, customer, phone, perfume..." value="${esc(H.q)}" style="flex:1;min-width:200px"></div>
+  <div class="bar">${sel('hsrc',H.src,[['all','Online + Shop'],['online','Online orders'],['store','In-store sales']])}
+  ${sel('hst',H.st,[['all','Any status'],['pending','pending'],['confirmed','confirmed'],['shipped','shipped'],['delivered','delivered'],['cancelled','cancelled']])}
+  ${sel('hpay',H.pay,[['all','Any payment'],['COD','Cash on Delivery'],['Online','Online (all)'],['Bank Transfer','Bank Transfer'],['Easypaisa','Easypaisa'],['JazzCash','JazzCash'],['Cash','Shop: Cash'],['Card','Shop: Card']])}
+  ${sel('hpaid',H.paid,[['all','Paid + Unpaid'],['paid','Paid'],['unpaid','Unpaid']])}
+  <label class="mut">From <input type="date" id="hfrom" value="${H.from}"></label><label class="mut">To <input type="date" id="hto" value="${H.to}"></label>
+  <button class="btn g s" id="hclr">Clear</button></div>
+  <div class="bar">${sel('hview',H.view,[['orders','View: Orders'],['cust','View: Customers (kis ne kya khareeda)']])}<button class="btn g s" id="hcsv">Download CSV</button></div></div>
+  <div id="hres"></div>`);
+  const upd=()=>histRes();
+  const bind=(id,k)=>{$('#'+id).oninput=e=>{H[k]=e.target.value;upd()}};
+  bind('hq','q');bind('hsrc','src');bind('hst','st');bind('hpay','pay');bind('hpaid','paid');bind('hfrom','from');bind('hto','to');bind('hview','view');
+  $('#hclr').onclick=()=>{H={q:'',src:'all',st:'all',pay:'all',paid:'all',from:'',to:'',view:H.view};hist()};
+  $('#hcsv').onclick=()=>csvOut(histList());
+  histRes();
+}
+function histRes(){
+  const list=histList(),live=list.filter(o=>o.status!=='cancelled');
+  const tot=live.reduce((a,o)=>a+o.total,0),units=live.reduce((a,o)=>a+o.lines.reduce((x,l)=>x+l.qty,0),0);
+  let body='';
+  if(!list.length)body='<div class="panel"><span class="mut">Koi record nahi mila.</span></div>';
+  else if(H.view==='cust'){
+    const m={};
+    live.forEach(o=>{const k=(String(o.customer.phone).replace(/\D/g,'').slice(-10))||o.customer.name.toLowerCase();
+      const c=m[k]=m[k]||{name:o.customer.name,phone:o.customer.phone,city:o.customer.city,n:0,total:0,last:o.createdAt,items:{}};
+      c.n++;c.total+=o.total;if(o.createdAt>c.last)c.last=o.createdAt;o.lines.forEach(l=>{const n=l.name+' '+l.size;c.items[n]=(c.items[n]||0)+l.qty})});
+    const cs=Object.values(m).sort((a,b)=>b.total-a.total);
+    body=`<div class="panel"><table><thead><tr><th>Customer</th><th>Orders</th><th>Total spent</th><th>Perfumes bought</th><th>Last order</th></tr></thead><tbody>${cs.map(c=>`<tr><td><b>${esc(c.name)}</b>${c.n>1?' <span class="pill delivered">Repeat</span>':''}<br><span class="mut">${esc(c.phone)}${c.city?' · '+esc(c.city):''}</span></td><td>${c.n}</td><td>${rs(c.total)}</td>
+     <td>${Object.entries(c.items).map(([n,q])=>`${esc(n)} ×${q}`).join('<br>')}</td><td class="mut">${new Date(c.last).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})}</td></tr>`).join('')}</tbody></table></div>`;
+  }else body=`<div class="panel"><table><thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Perfumes</th><th>Total</th><th>Status</th></tr></thead><tbody>${list.map(o=>`<tr data-h="${o.id}" style="cursor:pointer"><td><b>${esc(o.id)}</b><br><span class="pill">${o.source==='store'?'Shop':'Online'}</span></td>
+    <td class="mut">${new Date(o.createdAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})}</td><td>${esc(o.customer.name)}<br><span class="mut">${esc(o.customer.phone)}</span></td>
+    <td>${o.lines.map(l=>`${esc(l.name)} ${esc(l.size)} ×${l.qty}`).join('<br>')}</td><td>${rs(o.total)}<br><span class="mut">${esc(o.payment)}</span></td><td><span class="pill ${o.status}">${o.status}</span></td></tr>`).join('')}</tbody></table><p class="mut">Order par click karein to poori detail, invoice aur slip khulegi.</p></div>`;
+  $('#hres').innerHTML=`<div class="cards"><div class="stat"><span>Records</span><b>${list.length}</b></div><div class="stat"><span>Sales (cancelled chhor kar)</span><b>${rs(tot)}</b></div><div class="stat"><span>Perfumes sold</span><b>${units}</b></div></div>`+body;
+  document.querySelectorAll('[data-h]').forEach(r=>r.onclick=()=>histOpen(D.orders.find(x=>x.id===r.dataset.h)));
+}
+function histOpen(o){
+  const cost=oCost(o),days=D.settings.deliveryDays||'';
+  $('#modal').innerHTML=`<h2>${esc(o.id)} <span class="pill ${o.status}">${o.status}</span></h2>
+  <div class="mut">${new Date(o.createdAt).toLocaleString('en-GB')} · ${o.source==='store'?'In-store sale':'Online order'}</div>
+  <div><b>${esc(o.customer.name)}</b><br>${esc(o.customer.phone)}${o.customer.address?'<br>'+esc(o.customer.address)+', '+esc(o.customer.city):''}${o.customer.note?'<br><i class="mut">'+esc(o.customer.note)+'</i>':''}</div>
+  <table><tbody>${o.lines.map(l=>`<tr><td>${esc(l.name)} ${esc(l.size)} ×${l.qty}</td><td>${rs(l.total)}</td></tr>`).join('')}
+  <tr><td class="mut">Subtotal</td><td>${rs(o.subtotal)}</td></tr>${o.discount?`<tr><td class="mut">Discount${o.coupon?' ('+esc(o.coupon)+')':''}</td><td>− ${rs(o.discount)}</td></tr>`:''}
+  ${o.source!=='store'?`<tr><td class="mut">Delivery charges</td><td>${o.dcSet===false?'<span class="pill pending">not set</span>':rs(o.delivery)}</td></tr>`:''}
+  <tr><td><b>Total</b></td><td><b>${rs(o.total)}</b></td></tr><tr><td class="mut">Payment</td><td>${esc(o.payment)}${o.paymentRef?' · Txn '+esc(o.paymentRef):''} ${o.source==='store'||o.paid?'<span class="pill delivered">Paid</span>':'<span class="pill pending">Unpaid</span>'}</td></tr>
+  ${can('acc')?`<tr><td class="mut">Profit (cost nikal kar)</td><td>${rs(oRev(o)-cost)}</td></tr>`:''}</tbody></table>
+  <div class="bar" style="margin:0">${o.dcSet===false&&o.source!=='store'?'<span class="mut">Invoice ke liye pehle Orders tab mein DC set karein.</span>':`<a class="btn" style="text-decoration:none" target="_blank" href="${invUrl(o)}">Invoice</a><a class="btn g" style="text-decoration:none" target="_blank" href="${invUrl(o)}&slip=1">Slip</a><button class="btn g" id="hw">WhatsApp</button>`}<button class="btn g" id="hc">Close</button></div>`;
+  $('#ov').classList.add('on');
+  $('#hc').onclick=()=>$('#ov').classList.remove('on');const w=$('#hw');if(w)w.onclick=()=>waOrder(o);
+}
+
+// ---------- reviews ----------
+function rev(){
+  const list=[...(D.reviews||[])].sort((a,b)=>(a.status==='pending'?0:1)-(b.status==='pending'?0:1)||b.createdAt.localeCompare(a.createdAt));
+  const stars=n=>'★'.repeat(n)+'☆'.repeat(5-n);
+  M(`<h2>Reviews</h2><p class="mut">Website par customer ka review pehle "pending" mein aata hai, aap Approve karenge tab shop par dikhega. Facebook ke reviews neeche form se copy-paste kar ke add kar dein.</p>
+  <div class="panel" style="display:grid;gap:10px"><b>Add a review (e.g. from Facebook)</b>
+   <div class="g2"><label>Customer name<input id="rvn"></label><label>Stars<select id="rvr">${[5,4,3,2,1].map(n=>`<option value="${n}">${n} ★</option>`).join('')}</select></label></div>
+   <label>Review text<textarea id="rvt" rows="3"></textarea></label>
+   <div class="g2"><label>Where from<select id="rvs"><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="whatsapp">WhatsApp</option><option value="website">Website</option></select></label><label>Date (optional)<input type="date" id="rvd"></label></div>
+   <div><button class="btn" id="rvadd">Add Review</button></div></div>
+  <div class="panel"><table><thead><tr><th>Review</th><th>Status</th><th></th></tr></thead><tbody>${list.length?list.map(r=>`<tr><td><b>${esc(r.name)}</b> <span class="pill">${esc(r.source)}</span><br><span style="color:var(--gold)">${stars(r.rating)}</span><br>${esc(r.text)}<br><span class="mut">${new Date(r.createdAt).toLocaleDateString('en-GB')}</span></td>
+   <td><span class="pill ${r.status==='approved'?'delivered':r.status==='pending'?'pending':'cancelled'}">${r.status}</span></td>
+   <td style="white-space:nowrap">${r.status!=='approved'?`<button class="btn s" data-rs="${r.id}|approved">Approve</button> `:`<button class="btn g s" data-rs="${r.id}|hidden">Hide</button> `}<button class="btn g s" data-rd="${r.id}">Delete</button></td></tr>`).join(''):'<tr><td colspan="3" class="mut">Abhi koi review nahi.</td></tr>'}</tbody></table></div>`);
+  $('#rvadd').onclick=async()=>{try{await api('admin/review','POST',{name:$('#rvn').value,rating:+$('#rvr').value,text:$('#rvt').value,source:$('#rvs').value,date:$('#rvd').value});toast('Review added');await load()}catch(x){toast(x.message,1)}};
+  $('#main').onclick=async e=>{const s=e.target.closest('[data-rs]');if(s){const[id,st]=s.dataset.rs.split('|');try{await api('admin/review/'+id,'POST',{status:st});await load()}catch(x){toast(x.message,1)}return}
+    const d=e.target.closest('[data-rd]');if(d&&confirm('Delete this review?')){try{await api('admin/review/'+d.dataset.rd,'DELETE');await load()}catch(x){toast(x.message,1)}}};
+}
+
+// ---------- staff accounts ----------
+const PERM_L=[['dash','Dashboard (sales numbers)'],['sell','Sell (in-store billing)'],['prod','Products (add / edit / stock)'],['ord','Orders (status, DC, paid)'],['req','Customer requests'],['hist','History / search'],['rev','Reviews'],['acc','Accounts, profit & cost prices'],['off','Offers / coupons'],['set','Settings']];
+let stEdit=null;
+function staff(){
+  const list=D.staff||[],e=stEdit||{id:'',name:'',username:'',perms:['sell','ord','req','hist'],active:true};
+  M(`<h2>Staff</h2><p class="mut">Employee ke liye alag ID aur password banayein. Aap tick karte hain ki woh kya kya dekh/kar sakta hai. Owner login (sirf password, ID khali) hamesha poora access rakhta hai. Jis ko hatana ho "Active" band kar dein ya Delete karein, woh usi waqt logout ho jata hai.</p>
+  <div class="panel" style="display:grid;gap:10px"><b>${e.id?'Edit staff':'Add staff'}</b>
+   <div class="g2"><label>Name<input id="stn" value="${esc(e.name)}"></label><label>Employee ID (login)<input id="stu" value="${esc(e.username)}" autocapitalize="none" placeholder="e.g. ali.sales"></label></div>
+   <label>${e.id?'New password (khali = purana rahega)':'Password (min 6)'}<input id="stp" type="text" autocomplete="off"></label>
+   <div style="display:grid;gap:6px">${PERM_L.map(([k,l])=>`<label class="chk"><input type="checkbox" class="stperm" value="${k}" ${e.perms.includes(k)?'checked':''}> ${l}</label>`).join('')}</div>
+   <label class="chk"><input type="checkbox" id="sta" ${e.active?'checked':''}> Active</label>
+   <div class="bar" style="margin:0"><button class="btn" id="stsave">${e.id?'Save changes':'Create staff'}</button>${e.id?'<button class="btn g" id="stcancel">Cancel</button>':''}</div></div>
+  <div class="panel"><table><thead><tr><th>Staff</th><th>Access</th><th></th></tr></thead><tbody>${list.length?list.map(m=>`<tr><td><b>${esc(m.name)}</b><br><span class="mut">ID: ${esc(m.username)}</span><br><span class="pill ${m.active?'delivered':'cancelled'}">${m.active?'active':'disabled'}</span></td><td class="mut">${(m.perms||[]).map(k=>(PERM_L.find(x=>x[0]===k)||[k,k])[1].split(' (')[0]).join(', ')||'-'}</td>
+   <td style="white-space:nowrap"><button class="btn g s" data-se="${m.id}">Edit</button> <button class="btn g s" data-sd="${m.id}">Delete</button></td></tr>`).join(''):'<tr><td colspan="3" class="mut">Abhi koi staff nahi.</td></tr>'}</tbody></table></div>`);
+  $('#stsave').onclick=async()=>{try{await api('admin/staff','POST',{id:e.id,name:$('#stn').value,username:$('#stu').value,password:$('#stp').value,active:$('#sta').checked,perms:[...document.querySelectorAll('.stperm:checked')].map(x=>x.value)});stEdit=null;toast('Saved');await load()}catch(x){toast(x.message,1)}};
+  const c=$('#stcancel');if(c)c.onclick=()=>{stEdit=null;staff()};
+  $('#main').onclick=e2=>{const a=e2.target.closest('[data-se]');if(a){stEdit=JSON.parse(JSON.stringify(list.find(x=>x.id===a.dataset.se)));staff();scrollTo(0,0);return}
+    const d=e2.target.closest('[data-sd]');if(d&&confirm('Delete this staff account?'))api('admin/staff/'+d.dataset.sd,'DELETE').then(()=>{toast('Deleted');load()}).catch(x=>toast(x.message,1))};
 }
 
 // ---------- customer requests (out of stock demand) ----------
@@ -528,13 +644,35 @@ function payInit(){
 }
 
 // ---------- settings ----------
+function annInit(){
+  const pv=()=>{const t=($('#s_announcement').value||'').trim(),ef=$('#s_annEffect').value,sl=ef==='slide'||ef==='slideblink',bl=ef==='blink'||ef==='slideblink',def=$('#s_annDef').checked;
+    const k={slow:1.7,normal:1,fast:.55}[$('#s_annSpeed').value]||1,a=$('#annPrev');
+    a.className='annp'+($('#s_annBold').checked?' b':'')+(sl?' sl':'')+(bl?' bl':'');a.style.setProperty('--d',Math.round((8+t.length*.22)*k*.6)+'s');
+    a.style.color=def?'':$('#s_annColor').value;a.style.background=def?'':$('#s_annBg').value;$('#annCols').style.opacity=def?.4:1;
+    a.innerHTML='<span class="t"></span>';a.firstChild.textContent=t||'(announcement yahan dikhegi)'};
+  ['s_announcement','s_annEffect','s_annSpeed','s_annBold','s_annDef','s_annColor','s_annBg'].forEach(i=>{$('#'+i).oninput=pv;$('#'+i).onchange=pv});
+  $('#annRed').onclick=()=>{$('#s_annDef').checked=false;$('#s_annColor').value='#ffffff';$('#s_annBg').value='#d11a2a';$('#s_annBold').checked=true;if($('#s_annEffect').value==='static')$('#s_annEffect').value='slideblink';pv()};
+  pv();
+}
+function backup(){
+  const j=JSON.stringify({exportedAt:new Date().toISOString(),note:'Images are not included in this backup.',settings:D.settings,products:D.products,orders:D.orders,coupons:D.coupons,expenses:D.expenses,requests:D.requests,reviews:D.reviews,staff:D.staff},null,1);
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([j],{type:'application/json'}));a.download='zeen-backup-'+ymd(new Date())+'.json';a.click();
+}
 function set(){
   const s=D.settings;
   const f=(id,l,v,t='text')=>`<label>${l}<input id="s_${id}" type="${t}" value="${esc(v)}"></label>`;
   M(`<h2>Settings</h2>${designHtml()}${payHtml()}<div class="panel" style="display:grid;gap:12px">
   <div class="g2">${f('shopName','Shop name',s.shopName)}${f('tagline','Tagline',s.tagline)}</div>
   <div class="g2">${f('heroTitle','Homepage heading',s.heroTitle)}${f('heroSub','Homepage sub-heading',s.heroSub)}</div>
-  ${f('announcement','Top announcement bar (leave empty to hide)',s.announcement)}
+  <div class="panel" style="display:grid;gap:10px;background:transparent"><b>Top announcement bar</b><span class="mut">Text likhein (khali = bar nazar nahi aayegi). Jab chahein badal sakte hain, phir Save Settings dabayein.</span>
+   ${f('announcement','Announcement text (e.g. Eid Sale: 20% OFF on all perfumes!)',s.announcement)}
+   <div class="g2"><label>Effect<select id="s_annEffect">${[['static','Normal (still)'],['slide','Slide (scrolling)'],['blink','Blink'],['slideblink','Slide + Blink']].map(([k,l])=>`<option value="${k}" ${(s.annEffect||'static')===k?'selected':''}>${l}</option>`).join('')}</select></label>
+   <label>Speed (slide)<select id="s_annSpeed">${[['slow','Slow'],['normal','Normal'],['fast','Fast']].map(([k,l])=>`<option value="${k}" ${(s.annSpeed||'normal')===k?'selected':''}>${l}</option>`).join('')}</select></label></div>
+   <label class="chk"><input type="checkbox" id="s_annBold" ${s.annBold?'checked':''}> Bold text</label>
+   <label class="chk"><input type="checkbox" id="s_annDef" ${!s.annColor&&!s.annBg?'checked':''}> Website ke gold colors use karein</label>
+   <div class="g2" id="annCols"><label>Text color<input type="color" id="s_annColor" value="${s.annColor||'#ffffff'}"></label><label>Background color<input type="color" id="s_annBg" value="${s.annBg||'#b3202a'}"></label></div>
+   <div class="bar" style="margin:0"><button type="button" class="btn g s" id="annRed">Offer style: Red + Bold</button></div>
+   <div><span class="mut">Preview</span><div class="annp" id="annPrev"></div></div></div>
   <div class="g2">${f('whatsapp','WhatsApp number (with country code, e.g. 923001234567)',s.whatsapp)}${f('phone','Phone (shown in footer)',s.phone)}</div>
   <div class="g2">${f('address','Address (footer)',s.address)}${f('instagram','Instagram link or username (icon in footer)',s.instagram)}</div>
   <div class="g2">${f('facebook','Facebook page link or name (icon in footer)',s.facebook)}<label>Delivery charges<select id="s_deliveryMode"><option value="note" ${s.deliveryMode!=='fixed'?'selected':''}>Do not add. Only show the message below</option><option value="fixed" ${s.deliveryMode==='fixed'?'selected':''}>Add a fixed amount to the total</option></select></label></div>
@@ -543,9 +681,11 @@ function set(){
   <div class="g2">${f('deliveryCharge','Fixed delivery charge (Rs.) only for the Fixed option',s.deliveryCharge,'number')}${f('freeDeliveryAbove','Free delivery above (Rs., 0 = never) only for Fixed',s.freeDeliveryAbove,'number')}</div>
   ${f('invoiceNote','Thank-you note on invoice / slip',s.invoiceNote)}
   ${f('invoiceTerms','Terms on invoice (optional, e.g. return policy)',s.invoiceTerms)}
-  <div><button class="btn" id="ss">Save Settings</button></div></div>`);
-  designInit();payInit();$('#ss').onclick=async()=>{const g=id=>$('#s_'+id).value;
-    await api('admin/settings','POST',{shopName:g('shopName'),tagline:g('tagline'),heroTitle:g('heroTitle'),heroSub:g('heroSub'),announcement:g('announcement'),whatsapp:g('whatsapp'),phone:g('phone'),address:g('address'),instagram:g('instagram'),facebook:g('facebook'),deliveryMode:$('#s_deliveryMode').value,deliveryNote:g('deliveryNote'),deliveryDays:g('deliveryDays'),deliveryCharge:+g('deliveryCharge'),freeDeliveryAbove:+g('freeDeliveryAbove'),invoiceNote:g('invoiceNote'),invoiceTerms:g('invoiceTerms'),globalDiscount:D.settings.globalDiscount});
+  <div><button class="btn" id="ss">Save Settings</button></div></div>
+  ${D.me&&D.me.owner?`<div class="panel"><h2 style="font-size:20px">Backup</h2><p class="mut">Poora data (orders, products, customers, reviews) ek file mein. Mahine mein ek baar download kar ke rakhein.</p><button class="btn g" id="bk">Download full backup (JSON)</button></div>`:''}`);
+  if($('#bk'))$('#bk').onclick=backup;
+  designInit();payInit();annInit();$('#ss').onclick=async()=>{const g=id=>$('#s_'+id).value;
+    await api('admin/settings','POST',{shopName:g('shopName'),tagline:g('tagline'),heroTitle:g('heroTitle'),heroSub:g('heroSub'),announcement:g('announcement'),annEffect:g('annEffect'),annSpeed:g('annSpeed'),annBold:$('#s_annBold').checked,annColor:$('#s_annDef').checked?'':g('annColor'),annBg:$('#s_annDef').checked?'':g('annBg'),whatsapp:g('whatsapp'),phone:g('phone'),address:g('address'),instagram:g('instagram'),facebook:g('facebook'),deliveryMode:$('#s_deliveryMode').value,deliveryNote:g('deliveryNote'),deliveryDays:g('deliveryDays'),deliveryCharge:+g('deliveryCharge'),freeDeliveryAbove:+g('freeDeliveryAbove'),invoiceNote:g('invoiceNote'),invoiceTerms:g('invoiceTerms'),globalDiscount:D.settings.globalDiscount});
     toast('Saved');await load()};
 }
 load();
