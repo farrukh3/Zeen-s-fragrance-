@@ -94,14 +94,15 @@ async function load(){
   try{D=await api('admin/data');}catch(e){if(e.message!=='login')showLogin();return}
   draw();
 }
-const tabs=[['dash','Dashboard'],['sell','Sell (In-Store)'],['prod','Products'],['ord','Orders'],['acc','Accounts'],['off','Offers'],['set','Settings']];
+const tabs=[['dash','Dashboard'],['sell','Sell (In-Store)'],['prod','Products'],['ord','Orders'],['req','Requests'],['acc','Accounts'],['off','Offers'],['set','Settings']];
 function draw(){
   const pending=D.orders.filter(o=>o.status==='pending').length;
-  $('#app').innerHTML=`<div class="top"><span>${D.settings.logo?`<img src="/api/img/${D.settings.logo}" style="height:34px;width:34px;object-fit:contain;border-radius:50%;vertical-align:middle;margin-right:8px">`:''}<b>Zeen's Admin</b></span><div class="tabs">${tabs.map(([k,v])=>`<button class="tab ${k===tab?'on':''}" data-t="${k}">${v}${k==='ord'&&pending?` (${pending})`:''}</button>`).join('')}</div>
+  const openReq=(D.requests||[]).filter(r=>r.status==='open').length;
+  $('#app').innerHTML=`<div class="top"><span>${D.settings.logo?`<img src="/api/img/${D.settings.logo}" style="height:34px;width:34px;object-fit:contain;border-radius:50%;vertical-align:middle;margin-right:8px">`:''}<b>Zeen's Admin</b></span><div class="tabs">${tabs.map(([k,v])=>`<button class="tab ${k===tab?'on':''}" data-t="${k}">${v}${k==='ord'&&pending?` (${pending})`:''}${k==='req'&&openReq?` (${openReq})`:''}</button>`).join('')}</div>
   <span><a class="btn g s" href="/" target="_blank" style="text-decoration:none;display:inline-block">View Shop</a> <button class="btn g s" id="lo">Logout</button></span></div><main id="main"></main>`;
   $('#lo').onclick=async()=>{await api('admin/logout','POST');D=null;showLogin()};
   document.querySelectorAll('.tab').forEach(b=>b.onclick=async()=>{tab=b.dataset.t;await load()});
-  ({dash,sell,prod,ord,acc,off,set}[tab])();
+  ({dash,sell,prod,ord,req,acc,off,set}[tab])();
 }
 const M=h=>$('#main').innerHTML=h;
 const stock=p=>p.variants.reduce((s,v)=>s+v.stock,0);
@@ -122,6 +123,8 @@ function dash(){
    <div class="stat"><span>This month</span><b>${rs(sum(month))}</b><small class="mut">${month.length} orders</small></div>
    <div class="stat"><span>Total sales</span><b>${rs(sum(live))}</b><small class="mut">${live.length} orders</small></div>
    <div class="stat"><span>Pending orders</span><b>${D.orders.filter(o=>o.status==='pending').length}</b></div>
+   <div class="stat"><span>Waiting for DC</span><b>${D.orders.filter(o=>o.dcSet===false&&o.status!=='cancelled').length}</b><small class="mut">set delivery charges</small></div>
+   <div class="stat"><span>Customer requests</span><b>${(D.requests||[]).filter(r=>r.status==='open').length}</b><small class="mut">out-of-stock demand</small></div>
    <div class="stat"><span>Stock (units)</span><b>${D.products.reduce((s,p)=>s+stock(p),0)}</b><small class="mut">Value ${rs(val)}</small></div></div>
    <div class="g2"><div class="panel"><h2 style="font-size:20px">Low / out of stock</h2>${low.length?`<table><tbody>${low.map(([p,v])=>`<tr><td>${esc(p.name)} ${esc(v.size)}</td><td class="low">${v.stock} left</td></tr>`).join('')}</tbody></table>`:'<span class="mut">All good.</span>'}</div>
    <div class="panel"><h2 style="font-size:20px">Best sellers</h2>${top.length?`<table><tbody>${top.map(([n,q])=>`<tr><td>${esc(n)}</td><td>${q} sold</td></tr>`).join('')}</tbody></table>`:'<span class="mut">No sales yet.</span>'}</div></div>
@@ -187,24 +190,54 @@ function resize(file,max=900,type='image/jpeg',q=.82){return new Promise((res,re
   im.onerror=()=>rej(new Error('Image read nahi hui'));im.src=u})}
 
 // ---------- orders ----------
+function invCell(o,ctl){
+  if(o.dcSet===false&&o.status!=='cancelled'){
+    if(!ctl)return '<span class="pill pending">+ DC pending</span>';
+    return `<span class="pill pending">+ DC pending</span><br><div style="display:flex;gap:4px;margin-top:4px"><input type="number" min="0" max="5000" list="dcl" placeholder="DC Rs." data-dci="${o.id}" style="width:84px"><button class="btn s" data-dc="${o.id}">Set DC</button></div>`;
+  }
+  return `<a class="btn g s" style="text-decoration:none;display:inline-block" target="_blank" href="${invUrl(o)}">Invoice</a> <a class="btn g s" style="text-decoration:none;display:inline-block" target="_blank" href="${invUrl(o)}&slip=1">Slip</a> <button class="btn g s" data-wa="${o.id}">WhatsApp</button>${ctl&&o.source!=='store'&&o.status!=='cancelled'?`<br><span class="mut">DC ${rs(o.delivery||0)}</span> <button class="btn g s" data-edc="${o.id}">Edit DC</button>`:''}`;
+}
 function ordTable(list,ctl=true){
   if(!list.length)return '<span class="mut">No orders yet.</span>';
-  return `<table><thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Invoice</th></tr></thead><tbody>${list.map(o=>`<tr><td><b>${esc(o.id)}</b><br><span class="pill">${o.source==='store'?'In-store':'Online'}</span></td>
+  return `<datalist id="dcl">${[0,200,250,300,350,400].map(x=>`<option value="${x}">`).join('')}</datalist><table><thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Delivery charges / Invoice</th></tr></thead><tbody>${list.map(o=>`<tr><td><b>${esc(o.id)}</b><br><span class="pill">${o.source==='store'?'In-store':'Online'}</span></td>
    <td>${new Date(o.createdAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
    <td>${esc(o.customer.name)}<br><span class="mut">${esc(o.customer.phone)}</span>${o.customer.address?`<br><span class="mut">${esc(o.customer.address)}, ${esc(o.customer.city)}</span>`:''}${o.customer.note?`<br><i class="mut">${esc(o.customer.note)}</i>`:''}</td>
    <td>${o.lines.map(l=>`${esc(l.name)} ${esc(l.size)} ×${l.qty}`).join('<br>')}</td>
    <td>${rs(o.total)}<br><span class="mut">${esc(o.payment)}${o.coupon?' · '+esc(o.coupon):''}${o.paymentRef?'<br>Txn: '+esc(o.paymentRef):''}</span>${o.source!=='store'&&o.status!=='cancelled'&&o.payment!=='COD'?(o.paid?'<br><span class="pill delivered">Paid</span>':`<br><span class="pill pending">Unpaid</span> <button class="btn g s" data-mp="${o.id}">Mark paid</button>`):''}</td>
-   <td>${ctl&&o.status!=='cancelled'?`<select data-o="${o.id}">${['pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>`:`<span class="pill ${o.status}">${o.status}</span>`}</td><td style="white-space:nowrap"><a class="btn g s" style="text-decoration:none;display:inline-block" target="_blank" href="${invUrl(o)}">Invoice</a> <a class="btn g s" style="text-decoration:none;display:inline-block" target="_blank" href="${invUrl(o)}&slip=1">Slip</a> <button class="btn g s" data-wa="${o.id}">WhatsApp</button></td></tr>`).join('')}</tbody></table>`;
+   <td>${ctl&&o.status!=='cancelled'?`<select data-o="${o.id}">${['pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>`:`<span class="pill ${o.status}">${o.status}</span>`}</td><td style="white-space:nowrap">${invCell(o,ctl)}</td></tr>`).join('')}</tbody></table>`;
 }
 function ord(){
   const list=D.orders.filter(o=>oFilter==='all'||o.status===oFilter);
   M(`<h2>Orders</h2><div class="bar"><select id="of">${['all','pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${oFilter===s?'selected':''}>${s}</option>`).join('')}</select><span class="mut">Cancelling an order puts its stock back automatically.</span></div><div class="panel">${ordTable(list)}</div>`);
   $('#of').onchange=e=>{oFilter=e.target.value;ord()};
   $('#main').onclick=async e=>{const w=e.target.closest('[data-wa]');if(w)return waOrder(D.orders.find(x=>x.id===w.dataset.wa));
+    const dcb=e.target.closest('[data-dc]');if(dcb){const inp=document.querySelector(`[data-dci="${dcb.dataset.dc}"]`);if(!inp||inp.value==='')return toast('DC amount likhein (0 bhi likh sakte hain)',1);
+      try{await api('admin/order/'+dcb.dataset.dc+'/dc','POST',{amount:+inp.value});toast('DC set — ab invoice/slip ban sakti hai');await load()}catch(x){toast(x.message,1)}return}
+    const edc=e.target.closest('[data-edc]');if(edc){const o=D.orders.find(x=>x.id===edc.dataset.edc);const v=prompt('Delivery charges (Rs.)',o.delivery||0);if(v===null||v.trim()===''||isNaN(+v))return;
+      try{await api('admin/order/'+o.id+'/dc','POST',{amount:+v});toast('DC updated');await load()}catch(x){toast(x.message,1)}return}
     const m=e.target.closest('[data-mp]');if(m){try{await api('admin/order/'+m.dataset.mp+'/paid','POST',{paid:true});toast('Marked as paid');await load()}catch(x){toast(x.message,1)}}};
   $('#main').onchange=async e=>{const s=e.target.closest('[data-o]');if(!s)return;
     if(s.value==='cancelled'&&!confirm('Cancel this order and return stock?')){return ord()}
     try{await api('admin/order/'+s.dataset.o,'POST',{status:s.value});toast('Updated');await load()}catch(x){toast(x.message,1)}};
+}
+
+// ---------- customer requests (out of stock demand) ----------
+function req(){
+  const list=D.requests||[],open=list.filter(r=>r.status==='open');
+  const g={};open.forEach(r=>{const k=r.pid+'|'+r.size;(g[k]=g[k]||[]).push(r)});
+  const groups=Object.values(g).sort((a,b)=>b.reduce((s,r)=>s+r.qty,0)-a.reduce((s,r)=>s+r.qty,0));
+  const stockOf=r=>{const p=D.products.find(x=>x.id===r.pid),v=p&&p.variants.find(x=>x.size===r.size);return v?v.stock:0};
+  M(`<h2>Customer Requests</h2><p class="mut">Jo perfume stock mein nahi tha aur customer ne maanga — yeh aap ki demand list hai. Zyada demand wali pehle.</p>
+  ${groups.length?groups.map(rs_=>{const r0=rs_[0],qty=rs_.reduce((s,r)=>s+r.qty,0),st=stockOf(r0);return `<div class="panel"><h2 style="font-size:20px">${esc(r0.pname)} · ${esc(r0.size)} <span class="pill pending">${rs_.length} customers · ${qty} pcs</span> ${st>0?`<span class="pill delivered">Now in stock: ${st}</span>`:'<span class="pill cancelled">Out of stock</span>'}</h2>
+   <table><tbody>${rs_.map(r=>`<tr><td>${esc(r.name)}<br><span class="mut">${esc(r.phone)}</span></td><td>×${r.qty}</td><td class="mut">${new Date(r.createdAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</td>
+   <td style="white-space:nowrap"><button class="btn s" data-rwa="${r.id}">WhatsApp: back in stock</button> <button class="btn g s" data-rdone="${r.id}">Done</button> <button class="btn g s" data-rdel="${r.id}">Delete</button></td></tr>`).join('')}</tbody></table></div>`}).join(''):'<div class="panel"><span class="mut">Abhi koi request nahi.</span></div>'}
+  ${list.length>open.length?`<p class="mut">${list.length-open.length} requests done hain.</p>`:''}`);
+  $('#main').onclick=async e=>{
+    const w=e.target.closest('[data-rwa]');
+    if(w){const r=list.find(x=>x.id===w.dataset.rwa);
+      if(waOpen(r.phone,`Assalam o Alaikum ${r.name},\n${r.pname} (${r.size}) ab ${D.settings.shopName} mein available hai! Order karne ke liye: ${location.origin}`)){try{await api('admin/request/'+r.id,'POST',{status:'done'});await load()}catch(x){toast(x.message,1)}}return}
+    const d=e.target.closest('[data-rdone]');if(d){try{await api('admin/request/'+d.dataset.rdone,'POST',{status:'done'});await load()}catch(x){toast(x.message,1)}return}
+    const x=e.target.closest('[data-rdel]');if(x){if(!confirm('Delete this request?'))return;try{await api('admin/request/'+x.dataset.rdel,'DELETE');await load()}catch(y){toast(y.message,1)}}};
 }
 
 // ---------- in-store sell ----------
@@ -263,11 +296,28 @@ function off(){
 
 // ---------- invoices / whatsapp ----------
 const invUrl=o=>`/invoice?id=${encodeURIComponent(o.id)}&t=${encodeURIComponent(o.token||'')}`;
-function waNum(p){let d=String(p||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(d.startsWith('0'))d='92'+d.slice(1);return d}
+function waNum(p){let d=String(p||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);
+  if(d.startsWith('92')&&d.length===12)return d;
+  if(d.startsWith('0')&&d.length===11)return '92'+d.slice(1);
+  if(d.length===10&&d.startsWith('3'))return '92'+d;
+  return d}
+const waOk=n=>n.length>=11&&n.length<=15;
+function waOpen(phone,msg){const n=waNum(phone);if(!waOk(n)){toast('Customer ka phone number sahi nahi: '+(phone||'khali'),1);return false}
+  window.open('https://wa.me/'+n+'?text='+encodeURIComponent(msg),'_blank');return true}
 function waOrder(o){
-  const link=location.origin+invUrl(o);
-  const msg=`Assalam o Alaikum ${o.customer.name||''},\nThank you for shopping with ${D.settings.shopName}!\nOrder: ${o.id}\nTotal: ${rs(o.total)}\nYour invoice: ${link}`;
-  const n=waNum(o.customer.phone);window.open('https://wa.me/'+(n.length>=10?n:'')+'?text='+encodeURIComponent(msg),'_blank');
+  if(o.dcSet===false&&o.source!=='store')return toast('Pehle delivery charges (DC) set karein',1);
+  const link=location.origin+invUrl(o),days=D.settings.deliveryDays||'7 working days';
+  const items=o.lines.map(l=>`• ${l.name} ${l.size} x${l.qty} = ${rs(l.total)}`).join('\n');
+  const onlinePaid=o.payment!=='COD'&&o.source!=='store'&&o.paid;
+  let m=`Assalam o Alaikum ${o.customer.name||''},\nThank you for shopping with ${D.settings.shopName}!\n\nOrder: ${o.id}\n${items}\n\nSubtotal: ${rs(o.subtotal)}`;
+  if(o.discount)m+=`\nDiscount: - ${rs(o.discount)}`;
+  if(o.source!=='store')m+=`\nDelivery charges: ${o.delivery?rs(o.delivery):'FREE'}`;
+  m+=`\nTotal: ${rs(o.total)}`;
+  if(onlinePaid&&o.delivery>0)m+=`\nPaid online: ${rs(o.total-o.delivery)}\nTo pay on delivery (delivery charges): ${rs(o.delivery)}`;
+  else if(o.source!=='store')m+=o.payment==='COD'?`\nPayment: Cash on Delivery`:`\nPayment: ${o.payment} (${o.paid?'received':'pending'})`;
+  if(o.source!=='store')m+=`\nEstimated delivery: ${days}`;
+  m+=`\n\nInvoice: ${link}`;
+  waOpen(o.customer.phone,m);
 }
 function saleDone(o){
   $('#modal').innerHTML=`<h2>Sale complete ✓</h2><div><b>${esc(o.id)}</b> · ${rs(o.total)} · ${esc(o.payment)}</div>
@@ -488,13 +538,14 @@ function set(){
   <div class="g2">${f('whatsapp','WhatsApp number (with country code, e.g. 923001234567)',s.whatsapp)}${f('phone','Phone (shown in footer)',s.phone)}</div>
   <div class="g2">${f('address','Address (footer)',s.address)}${f('instagram','Instagram link or username (icon in footer)',s.instagram)}</div>
   <div class="g2">${f('facebook','Facebook page link or name (icon in footer)',s.facebook)}<label>Delivery charges<select id="s_deliveryMode"><option value="note" ${s.deliveryMode!=='fixed'?'selected':''}>Do not add. Only show the message below</option><option value="fixed" ${s.deliveryMode==='fixed'?'selected':''}>Add a fixed amount to the total</option></select></label></div>
+  ${f('deliveryDays','Estimated delivery time shown to customers (e.g. 7 working days)',s.deliveryDays||'7 working days')}
   ${f('deliveryNote','Delivery message shown to customers (cart, checkout, invoice)',s.deliveryNote)}
   <div class="g2">${f('deliveryCharge','Fixed delivery charge (Rs.) only for the Fixed option',s.deliveryCharge,'number')}${f('freeDeliveryAbove','Free delivery above (Rs., 0 = never) only for Fixed',s.freeDeliveryAbove,'number')}</div>
   ${f('invoiceNote','Thank-you note on invoice / slip',s.invoiceNote)}
   ${f('invoiceTerms','Terms on invoice (optional, e.g. return policy)',s.invoiceTerms)}
   <div><button class="btn" id="ss">Save Settings</button></div></div>`);
   designInit();payInit();$('#ss').onclick=async()=>{const g=id=>$('#s_'+id).value;
-    await api('admin/settings','POST',{shopName:g('shopName'),tagline:g('tagline'),heroTitle:g('heroTitle'),heroSub:g('heroSub'),announcement:g('announcement'),whatsapp:g('whatsapp'),phone:g('phone'),address:g('address'),instagram:g('instagram'),facebook:g('facebook'),deliveryMode:$('#s_deliveryMode').value,deliveryNote:g('deliveryNote'),deliveryCharge:+g('deliveryCharge'),freeDeliveryAbove:+g('freeDeliveryAbove'),invoiceNote:g('invoiceNote'),invoiceTerms:g('invoiceTerms'),globalDiscount:D.settings.globalDiscount});
+    await api('admin/settings','POST',{shopName:g('shopName'),tagline:g('tagline'),heroTitle:g('heroTitle'),heroSub:g('heroSub'),announcement:g('announcement'),whatsapp:g('whatsapp'),phone:g('phone'),address:g('address'),instagram:g('instagram'),facebook:g('facebook'),deliveryMode:$('#s_deliveryMode').value,deliveryNote:g('deliveryNote'),deliveryDays:g('deliveryDays'),deliveryCharge:+g('deliveryCharge'),freeDeliveryAbove:+g('freeDeliveryAbove'),invoiceNote:g('invoiceNote'),invoiceTerms:g('invoiceTerms'),globalDiscount:D.settings.globalDiscount});
     toast('Saved');await load()};
 }
 load();
