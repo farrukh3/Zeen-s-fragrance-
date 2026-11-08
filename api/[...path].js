@@ -13,19 +13,33 @@ function sign(payload) {
   return p + '.' + s;
 }
 function verify(tok) {
-  if (!tok || !PASSWORD()) return false;
+  if (!tok || !PASSWORD()) return null;
   const [p, s] = String(tok).split('.');
-  if (!p || !s) return false;
+  if (!p || !s) return null;
   const good = crypto.createHmac('sha256', SECRET()).update(p).digest('base64url');
   const a = Buffer.from(s), b = Buffer.from(good);
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
-  try { return JSON.parse(Buffer.from(p, 'base64url').toString()).exp > Date.now(); } catch { return false; }
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try { const d = JSON.parse(Buffer.from(p, 'base64url').toString()); return d.exp > Date.now() ? d : null; } catch { return null; }
 }
 function cookie(req, name) {
   const m = (req.headers.cookie || '').match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
   return m ? decodeURIComponent(m[1]) : '';
 }
-const isAdmin = (req) => verify(cookie(req, 'zt'));
+const PERMS = ['dash', 'sell', 'prod', 'ord', 'req', 'hist', 'rev', 'acc', 'off', 'set'];
+// owner (ADMIN_PASSWORD) can do everything; staff accounts only what the owner ticked
+async function getAuth(req) {
+  const p = verify(cookie(req, 'zt'));
+  if (!p) return null;
+  if (!p.u || p.u === 'owner') return { owner: true, name: 'Owner', perms: new Set(PERMS) };
+  const st = (await getStaff()).find((x) => x.id === p.u && x.active);
+  if (!st) return null;
+  return { owner: false, id: st.id, name: st.name, perms: new Set((st.perms || []).filter((x) => PERMS.includes(x))) };
+}
+const hashPw = (pw, salt) => crypto.scryptSync(String(pw), salt, 32).toString('hex');
+const pwOk = (st, pw) => {
+  const a = Buffer.from(hashPw(pw, st.salt), 'hex'), b = Buffer.from(st.hash, 'hex');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------- data helpers ----------
@@ -47,6 +61,8 @@ const getOrders = async () => (await db.get('orders')) || [];
 const getCoupons = async () => (await db.get('coupons')) || [];
 const getExpenses = async () => (await db.get('expenses')) || [];
 const getRequests = async () => (await db.get('requests')) || [];
+const getStaff = async () => (await db.get('staff')) || [];
+const getReviews = async () => (await db.get('reviews')) || [];
 const newToken = () => crypto.randomBytes(8).toString('hex');
 
 async function readBody(req) {
@@ -84,8 +100,10 @@ module.exports = async (req, res) => {
 
     // ===== public =====
     if (method === 'GET' && a === 'shop') {
-      const [settings, products] = await Promise.all([getSettings(), getProducts()]);
-      return send(200, { settings, products: products.filter((p) => p.active).map((p) => L.publicProduct(p, settings)) });
+      const [settings, products, reviews] = await Promise.all([getSettings(), getProducts(), getReviews()]);
+      const rv = reviews.filter((r) => r.status === 'approved').sort((x, y) => (y.createdAt || '').localeCompare(x.createdAt || '')).slice(0, 40)
+        .map(({ id, name, rating, text, source, createdAt }) => ({ id, name, rating, text, source, createdAt }));
+      return send(200, { settings, products: products.filter((p) => p.active).map((p) => L.publicProduct(p, settings)), reviews: rv });
     }
 
     if (method === 'GET' && a === 'img' && b) {
@@ -142,6 +160,20 @@ module.exports = async (req, res) => {
       return send(200, { ok: true, order: L.stripCost(order) });
     }
 
+    // customer writes a review (waits for admin approval)
+    if (method === 'POST' && a === 'review') {
+      const body = await readBody(req);
+      if (body.website) return send(200, { ok: true }); // honeypot
+      const name = str(body.name, 60), text = str(body.text, 400), rating = L.clamp(Math.round(L.num(body.rating, 5)), 1, 5);
+      if (!name || text.length < 5) return send(400, { error: 'Naam aur review likhein (kam az kam 5 huroof)' });
+      const list = await getReviews();
+      if (list.filter((r) => r.status === 'pending').length >= 60) return send(429, { error: 'Abhi bohat reviews pending hain, baad mein try karein' });
+      if (!list.some((r) => r.name === name && r.text === text))
+        list.unshift({ id: 'v_' + crypto.randomBytes(5).toString('hex'), name, rating, text, source: 'website', status: 'pending', createdAt: new Date().toISOString() });
+      await db.set('reviews', list.slice(0, 500));
+      return send(200, { ok: true });
+    }
+
     // customer asks for an out-of-stock perfume
     if (method === 'POST' && a === 'request') {
       const body = await readBody(req);
@@ -166,27 +198,33 @@ module.exports = async (req, res) => {
     if (method === 'GET' && a === 'invoice' && b) {
       const o = (await getOrders()).find((x) => x.id === b);
       const t = url.searchParams.get('t') || '';
-      const admin = isAdmin(req);
+      const au = await getAuth(req);
+      const admin = !!au;
       const tokOk = !!(o && o.token && t.length === o.token.length && crypto.timingSafeEqual(Buffer.from(t), Buffer.from(o.token)));
       if (!o || !(admin || tokOk)) return send(404, { error: 'Invoice nahi mila' });
       if (o.source !== 'store' && o.dcSet === false) return send(409, { error: 'Delivery charges abhi set nahi hue. Thori der baad try karein.' });
       const st = await getSettings();
       const shop = { shopName: st.shopName, logo: st.logo, address: st.address, phone: st.phone, whatsapp: st.whatsapp, instagram: st.instagram, facebook: st.facebook, invoiceNote: st.invoiceNote, invoiceTerms: st.invoiceTerms, deliveryDays: st.deliveryDays, accent: st.theme.accent };
-      return send(200, { order: admin ? o : L.stripCost(o), shop });
+      return send(200, { order: au && au.perms.has('acc') ? o : L.stripCost(o), shop });
     }
 
     // ===== admin login =====
     if (a === 'admin' && b === 'login' && method === 'POST') {
       const body = await readBody(req);
       if (!PASSWORD()) return send(500, { error: 'ADMIN_PASSWORD Vercel environment variables mein set nahi hai' });
-      const ok = (() => {
+      const uname = str(body.username, 30).toLowerCase();
+      let uid = null;
+      if (!uname || uname === 'admin') {
         const x = crypto.createHash('sha256').update(String(body.password || '')).digest();
         const y = crypto.createHash('sha256').update(PASSWORD()).digest();
-        return crypto.timingSafeEqual(x, y);
-      })();
-      if (!ok) { await sleep(800); return send(401, { error: 'Password galat hai' }); }
+        if (crypto.timingSafeEqual(x, y)) uid = 'owner';
+      } else {
+        const st = (await getStaff()).find((z) => z.username === uname && z.active);
+        if (st && pwOk(st, body.password || '')) uid = st.id;
+      }
+      if (!uid) { await sleep(800); return send(401, { error: 'Username ya password galat hai' }); }
       const secure = (req.headers['x-forwarded-proto'] || '').includes('https') ? '; Secure' : '';
-      const tok = sign({ exp: Date.now() + 7 * 864e5 });
+      const tok = sign({ exp: Date.now() + 7 * 864e5, u: uid });
       return send(200, { ok: true }, { 'Set-Cookie': `zt=${tok}; HttpOnly; Path=/; SameSite=Strict; Max-Age=604800${secure}` });
     }
     if (a === 'admin' && b === 'logout') {
@@ -195,17 +233,30 @@ module.exports = async (req, res) => {
 
     // ===== admin (protected) =====
     if (a === 'admin') {
-      if (!isAdmin(req)) return send(401, { error: 'Login zaroori hai' });
+      const au = await getAuth(req);
+      if (!au) return send(401, { error: 'Login zaroori hai' });
+      const need = (p) => { if (!au.perms.has(p)) throw L.httpErr(403, 'Is kaam ki ijazat nahi hai'); };
 
       if (method === 'GET' && b === 'data') {
-        const [settings, products, orders, coupons, expenses, requests] = await Promise.all([getSettings(), getProducts(), getOrders(), getCoupons(), getExpenses(), getRequests()]);
+        const [settings, products0, orders0, coupons, expenses0, requests, reviews, staff] = await Promise.all([getSettings(), getProducts(), getOrders(), getCoupons(), getExpenses(), getRequests(), getReviews(), getStaff()]);
+        let products = products0, orders = orders0;
         let changed = false;
         for (const o of orders) if (!o.token) { o.token = newToken(); changed = true; }
         if (changed) await db.set('orders', orders);
-        return send(200, { settings, products, orders, coupons, expenses, requests });
+        const seeCost = au.perms.has('acc');
+        if (!seeCost) {
+          products = products.map((p) => ({ ...p, variants: p.variants.map(({ cost, ...v }) => v) }));
+          orders = orders.map(L.stripCost);
+        }
+        return send(200, {
+          settings, products, orders, coupons, expenses: seeCost ? expenses0 : [], requests, reviews: au.perms.has('rev') ? reviews : [],
+          staff: au.owner ? staff.map(({ salt, hash, ...x }) => x) : [],
+          me: { owner: au.owner, name: au.name, perms: [...au.perms] },
+        });
       }
 
       if (method === 'POST' && b === 'image') {
+        if (!au.perms.has('prod') && !au.perms.has('set')) need('prod');
         const body = await readBody(req);
         const d = String(body.dataUrl || '');
         if (!/^data:image\/(jpeg|png|webp);base64,/.test(d)) return send(400, { error: 'Sirf JPG/PNG/WEBP image' });
@@ -216,11 +267,13 @@ module.exports = async (req, res) => {
       }
 
       if (method === 'POST' && b === 'product') {
+        need('prod');
         const body = await readBody(req);
         const products = await getProducts();
         const i = products.findIndex((p) => p.id === body.id);
         const old = i >= 0 ? products[i] : null;
         const np = L.cleanProduct(body, old);
+        if (!au.perms.has('acc')) for (const v of np.variants) { const ov = old && old.variants.find((x) => x.size === v.size); v.cost = ov ? ov.cost : 0; } // staff cannot see/change cost
         if (old) {
           for (const im of old.images) if (!np.images.includes(im)) await db.del('img:' + im);
           products[i] = np;
@@ -230,6 +283,7 @@ module.exports = async (req, res) => {
       }
 
       if (method === 'DELETE' && b === 'product' && c) {
+        need('prod');
         const products = await getProducts();
         const p = products.find((x) => x.id === c);
         if (p) for (const im of p.images) await db.del('img:' + im);
@@ -238,6 +292,7 @@ module.exports = async (req, res) => {
       }
 
       if (method === 'POST' && b === 'order' && c && parts[3] === 'dc') {
+        need('ord');
         const body = await readBody(req);
         const orders = await getOrders();
         const o = orders.find((x) => x.id === c);
@@ -248,10 +303,11 @@ module.exports = async (req, res) => {
         o.total = o.subtotal - o.discount + amt;
         o.dcSet = true;
         await db.set('orders', orders);
-        return send(200, { ok: true, order: o });
+        return send(200, { ok: true, order: au.perms.has('acc') ? o : L.stripCost(o) });
       }
 
       if (b === 'request' && c) {
+        need('req');
         const list = await getRequests();
         if (method === 'DELETE') { await db.set('requests', list.filter((x) => x.id !== c)); return send(200, { ok: true }); }
         if (method === 'POST') {
@@ -265,6 +321,7 @@ module.exports = async (req, res) => {
       }
 
       if (method === 'POST' && b === 'order' && c && parts[3] === 'paid') {
+        need('ord');
         const body = await readBody(req);
         const orders = await getOrders();
         const o = orders.find((x) => x.id === c);
@@ -275,6 +332,7 @@ module.exports = async (req, res) => {
       }
 
       if (method === 'POST' && b === 'order' && c) {
+        need('ord');
         const body = await readBody(req);
         const status = str(body.status, 20);
         if (!['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'].includes(status)) return send(400, { error: 'Invalid status' });
@@ -295,6 +353,7 @@ module.exports = async (req, res) => {
 
       // in-store sale (POS)
       if (method === 'POST' && b === 'sale') {
+        need('sell');
         const body = await readBody(req);
         const [settings, products] = await Promise.all([getSettings(), getProducts()]);
         const lines = L.buildLines(body.items, products, settings, { onlyActive: false });
@@ -311,10 +370,11 @@ module.exports = async (req, res) => {
         const orders = await getOrders();
         orders.unshift(order);
         await db.set('orders', orders);
-        return send(200, { ok: true, order });
+        return send(200, { ok: true, order: au.perms.has('acc') ? order : L.stripCost(order) });
       }
 
       if (method === 'POST' && b === 'settings') {
+        need('set');
         const body = await readBody(req);
         const cur = await getSettings();
         const g = body.globalDiscount || {};
@@ -322,7 +382,7 @@ module.exports = async (req, res) => {
           ...cur,
           shopName: str(body.shopName, 60) || cur.shopName,
           tagline: str(body.tagline, 120), heroTitle: str(body.heroTitle, 80), heroSub: str(body.heroSub, 200),
-          announcement: str(body.announcement, 160),
+          announcement: body.announcement === undefined ? cur.announcement : str(body.announcement, 200),
           whatsapp: str(body.whatsapp, 20).replace(/\D/g, ''),
           phone: str(body.phone, 30), address: str(body.address, 200), instagram: str(body.instagram, 150),
           deliveryCharge: Math.max(0, Math.round(L.num(body.deliveryCharge))),
@@ -336,6 +396,12 @@ module.exports = async (req, res) => {
           const t = body.theme, ct = cur.theme;
           next.theme = { bg: hex(t.bg, ct.bg), card: hex(t.card, ct.card), accent: hex(t.accent, ct.accent), ink: hex(t.ink, ct.ink) };
         }
+        const hx = (v, d) => (v === undefined ? d : /^#[0-9a-fA-F]{6}$/.test(v || '') ? v : '');
+        next.annEffect = body.annEffect === undefined ? cur.annEffect : ['static', 'slide', 'blink', 'slideblink'].includes(body.annEffect) ? body.annEffect : 'static';
+        next.annSpeed = body.annSpeed === undefined ? cur.annSpeed : ['slow', 'normal', 'fast'].includes(body.annSpeed) ? body.annSpeed : 'normal';
+        next.annBold = body.annBold === undefined ? !!cur.annBold : !!body.annBold;
+        next.annColor = hx(body.annColor, cur.annColor);
+        next.annBg = hx(body.annBg, cur.annBg);
         next.facebook = body.facebook === undefined ? cur.facebook : str(body.facebook, 150);
         next.deliveryMode = body.deliveryMode === undefined ? cur.deliveryMode : body.deliveryMode === 'fixed' ? 'fixed' : 'note';
         next.deliveryDays = body.deliveryDays === undefined ? cur.deliveryDays : str(body.deliveryDays, 40) || '7 working days';
@@ -357,6 +423,7 @@ module.exports = async (req, res) => {
       }
 
       if (method === 'POST' && b === 'expense') {
+        need('acc');
         const body = await readBody(req);
         const amount = Math.round(L.num(body.amount));
         if (amount <= 0) return send(400, { error: 'Amount likhein' });
@@ -372,11 +439,13 @@ module.exports = async (req, res) => {
         return send(200, { ok: true });
       }
       if (method === 'DELETE' && b === 'expense' && c) {
+        need('acc');
         await db.set('expenses', (await getExpenses()).filter((x) => x.id !== c));
         return send(200, { ok: true });
       }
 
       if (method === 'POST' && b === 'coupon') {
+        need('off');
         const body = await readBody(req);
         const code = str(body.code, 30).toUpperCase().replace(/[^A-Z0-9_-]/g, '');
         if (!code) return send(400, { error: 'Coupon code likhein' });
@@ -393,8 +462,59 @@ module.exports = async (req, res) => {
         return send(200, { ok: true });
       }
       if (method === 'DELETE' && b === 'coupon' && c) {
+        need('off');
         await db.set('coupons', (await getCoupons()).filter((x) => x.code !== c));
         return send(200, { ok: true });
+      }
+
+      // ----- reviews (add from Facebook, approve customer reviews) -----
+      if (b === 'review') {
+        need('rev');
+        const list = await getReviews();
+        if (method === 'POST' && !c) {
+          const body = await readBody(req);
+          const name = str(body.name, 60), text = str(body.text, 400);
+          if (!name || !text) return send(400, { error: 'Naam aur review likhein' });
+          const src = ['facebook', 'website', 'instagram', 'whatsapp'].includes(body.source) ? body.source : 'facebook';
+          const when = /^\d{4}-\d{2}-\d{2}$/.test(body.date || '') ? new Date(body.date + 'T12:00:00').toISOString() : new Date().toISOString();
+          list.unshift({ id: 'v_' + crypto.randomBytes(5).toString('hex'), name, rating: L.clamp(Math.round(L.num(body.rating, 5)), 1, 5), text, source: src, status: 'approved', createdAt: when });
+          await db.set('reviews', list.slice(0, 500));
+          return send(200, { ok: true });
+        }
+        if (method === 'POST' && c) {
+          const body = await readBody(req);
+          const r = list.find((x) => x.id === c);
+          if (!r) return send(404, { error: 'Review nahi mila' });
+          r.status = ['approved', 'hidden', 'pending'].includes(body.status) ? body.status : r.status;
+          await db.set('reviews', list);
+          return send(200, { ok: true });
+        }
+        if (method === 'DELETE' && c) { await db.set('reviews', list.filter((x) => x.id !== c)); return send(200, { ok: true }); }
+      }
+
+      // ----- staff accounts (owner only) -----
+      if (b === 'staff') {
+        if (!au.owner) throw L.httpErr(403, 'Sirf owner staff manage kar sakta hai');
+        const list = await getStaff();
+        if (method === 'DELETE' && c) { await db.set('staff', list.filter((x) => x.id !== c)); return send(200, { ok: true }); }
+        if (method === 'POST') {
+          const body = await readBody(req);
+          const name = str(body.name, 60), username = str(body.username, 20).toLowerCase();
+          if (!name) return send(400, { error: 'Staff ka naam likhein' });
+          if (!/^[a-z0-9._-]{3,20}$/.test(username) || username === 'admin') return send(400, { error: 'Username 3-20 huroof/numbers ho (admin nahi ho sakta)' });
+          const perms = (Array.isArray(body.perms) ? body.perms : []).filter((x) => PERMS.includes(x));
+          const i = list.findIndex((x) => x.id === body.id);
+          if (list.some((x, j) => x.username === username && j !== i)) return send(400, { error: 'Yeh username pehle se maujood hai' });
+          const pw = String(body.password || '');
+          if (i < 0 && pw.length < 6) return send(400, { error: 'Password kam az kam 6 huroof ka ho' });
+          if (pw && pw.length < 6) return send(400, { error: 'Password kam az kam 6 huroof ka ho' });
+          const old = i >= 0 ? list[i] : null;
+          const salt = pw ? crypto.randomBytes(12).toString('hex') : old.salt;
+          const st = { id: old ? old.id : 's_' + crypto.randomBytes(5).toString('hex'), name, username, perms, active: body.active !== false, salt, hash: pw ? hashPw(pw, salt) : old.hash, createdAt: old ? old.createdAt : new Date().toISOString() };
+          if (i >= 0) list[i] = st; else list.push(st);
+          await db.set('staff', list);
+          return send(200, { ok: true });
+        }
       }
     }
 
