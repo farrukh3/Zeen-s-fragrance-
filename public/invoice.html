@@ -83,7 +83,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const rs=n=>'Rs. '+Number(n||0).toLocaleString('en-PK');
 const q=new URLSearchParams(location.search);
 let DATA=null;
-function waNum(p){let d=String(p||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(d.startsWith('0'))d='92'+d.slice(1);return d}
+function waNum(p){let d=String(p||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(d.startsWith('92')&&d.length===12)return d;if(d.startsWith('0')&&d.length===11)return '92'+d.slice(1);if(d.length===10&&d.startsWith('3'))return '92'+d;return d}
 function render(){
   const {order:o,shop:s}=DATA;
   document.documentElement.style.setProperty('--ac',s.accent||'#a67c1a');
@@ -97,7 +97,7 @@ function render(){
   let paid;
   if(o.source==='store')paid=`Paid: ${esc(o.payment)}`;
   else if(o.payment==='COD')paid=o.status==='delivered'?'Paid (Cash on Delivery)':`Payment: Cash on Delivery. Please pay ${rs(o.total)} when your parcel arrives.`;
-  else paid=o.paid?`Paid online via ${esc(o.payment)}`:`Online payment via ${esc(o.payment)}: awaiting confirmation${o.paymentRef?' (Txn: '+esc(o.paymentRef)+')':''}`;
+  else paid=o.paid?(o.delivery>0?`Paid ${rs(o.total-o.delivery)} online via ${esc(o.payment)}. Delivery charges ${rs(o.delivery)} to be paid on delivery.`:`Paid online via ${esc(o.payment)}`):`Online payment via ${esc(o.payment)}: awaiting confirmation${o.paymentRef?' (Txn: '+esc(o.paymentRef)+')':''}`;
   const rows=o.lines.map((l,i)=>`<tr><td class="hide-s">${i+1}</td><td><b>${esc(l.name)}</b><br><span style="color:#6b665a">${esc(l.size)} × ${l.qty}</span></td><td class="r hide-s">${rs(l.orig)}</td><td class="r hide-s">${l.orig>l.unit?'-'+rs((l.orig-l.unit)*l.qty):'—'}</td><td class="r">${rs(l.total)}</td></tr>`).join('');
   $('#root').innerHTML=`<div class="paper">
    <div class="hd"><div class="brand">${s.logo?`<img src="/api/img/${esc(s.logo)}" alt="">`:''}<div><h1>${esc(s.shopName)}</h1><p>${[s.address,s.phone&&'Phone: '+s.phone,s.instagram,s.facebook].filter(Boolean).map(esc).join('<br>')}</p></div></div>
@@ -109,11 +109,12 @@ function render(){
     <div><span>Subtotal (list price)</span><span>${rs(listTotal)}</span></div>
     ${itemDisc?`<div class="g"><span>Product discount</span><span>- ${rs(itemDisc)}</span></div>`:''}
     ${o.discount?`<div class="g"><span>${o.coupon?'Coupon ('+esc(o.coupon)+')':'Extra discount'}</span><span>- ${rs(o.discount)}</span></div>`:''}
-    <div><span>Delivery</span><span>${o.delivery?rs(o.delivery):(o.deliveryNote?'As per area':'FREE')}</span></div>
+    <div><span>Delivery</span><span>${o.delivery?rs(o.delivery):((o.deliveryNote&&o.dcSet===undefined)?'As per area':'FREE')}</span></div>
     <div class="t"><span>Total</span><span>${rs(o.total)}</span></div>
     ${saved?`<div class="g" style="margin-top:6px"><span>You saved</span><span>${rs(saved)}</span></div>`:''}
    </div>
-   ${o.deliveryNote&&!o.delivery?`<div class="terms" style="margin-top:8px">${esc(o.deliveryNote)}</div>`:''}
+   ${o.deliveryNote&&!o.delivery&&o.dcSet===undefined?`<div class="terms" style="margin-top:8px">${esc(o.deliveryNote)}</div>`:''}
+   ${o.source!=='store'?`<div class="terms" style="margin-top:8px">Estimated delivery: ${esc(s.deliveryDays||'7 working days')}</div>`:''}
    <div class="pay">${paid}</div>
    <div class="thanks"><b>Thank You!</b>${esc(s.invoiceNote||'')}</div>
    ${s.invoiceTerms?`<div class="terms"><b>Terms:</b> ${esc(s.invoiceTerms)}</div>`:''}
@@ -121,9 +122,15 @@ function render(){
   </div>`;
   $('#bar').style.display='flex';
   const num=waNum(cu.phone);
-  if(num.length>=10){$('#bWa').style.display='';$('#bWa').onclick=()=>{
+  if(num.length>=11&&num.length<=15){$('#bWa').style.display='';$('#bWa').onclick=()=>{
     const link=location.origin+'/invoice?id='+encodeURIComponent(o.id)+'&t='+encodeURIComponent(o.token||'');
-    const msg=`Assalam o Alaikum ${cu.name||''},\nThank you for shopping with ${s.shopName}!\nOrder: ${o.id}\nTotal: ${rs(o.total)}\nYour invoice: ${link}`;
+    const items=o.lines.map(l=>`• ${l.name} ${l.size} x${l.qty} = ${rs(l.total)}`).join('\n');
+    let msg=`Assalam o Alaikum ${cu.name||''},\nThank you for shopping with ${s.shopName}!\n\nOrder: ${o.id}\n${items}\n\nSubtotal: ${rs(o.subtotal)}`;
+    if(o.discount)msg+=`\nDiscount: - ${rs(o.discount)}`;
+    if(o.source!=='store')msg+=`\nDelivery charges: ${o.delivery?rs(o.delivery):'FREE'}`;
+    msg+=`\nTotal: ${rs(o.total)}`;
+    if(o.source!=='store')msg+=`\nEstimated delivery: ${s.deliveryDays||'7 working days'}`;
+    msg+=`\n\nInvoice: ${link}`;
     window.open('https://wa.me/'+num+'?text='+encodeURIComponent(msg),'_blank')}}
 }
 function mode(slip){document.body.classList.toggle('slip',slip);$('#bSlip').classList.toggle('on',slip);$('#bA4').classList.toggle('on',!slip);
@@ -134,6 +141,7 @@ mode(q.get('slip')==='1');
   const id=q.get('id');
   if(!id){$('#root').innerHTML='<div class="err"><h2>Invoice nahi mila</h2></div>';return}
   try{const r=await fetch('/api/invoice/'+encodeURIComponent(id)+'?t='+encodeURIComponent(q.get('t')||''));
+    if(r.status===409){const d=await r.json();$('#root').innerHTML='<div class="err"><h2>Invoice abhi tayar nahi</h2><p>'+(d.error||'Delivery charges abhi set nahi hue.')+'</p></div>';return}
     if(!r.ok)throw 0;DATA=await r.json();render();if(q.get('print')==='1')setTimeout(()=>window.print(),400)}
   catch{$('#root').innerHTML='<div class="err"><h2>Invoice nahi mila</h2><p>Link sahi nahi hai ya order delete ho chuka hai.</p></div>'}
 })();

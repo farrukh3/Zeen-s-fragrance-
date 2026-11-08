@@ -133,7 +133,9 @@ section{padding:52px 0}
 .sizes{display:flex;gap:8px;flex-wrap:wrap}
 .size{border:1px solid var(--line);border-radius:12px;padding:8px 14px;text-align:left;min-width:112px}
 .size.on{border-color:var(--gold);background:var(--soft)}
-.size.off{opacity:.45;cursor:not-allowed}
+.size.off{opacity:.7}
+.reqbox{display:grid;gap:8px;margin-top:8px;padding:12px;border:1px dashed var(--line,#c9a24b66);border-radius:12px}
+.reqbox b{font-size:14px}.reqbox small{color:var(--mute)}
 .size small{display:block;color:var(--mute);font-size:12px}
 .pyr{display:grid;gap:9px}
 .pyr div{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
@@ -335,7 +337,7 @@ function card(p){
     ${mx>0?`<span class="tag">${mx}% OFF</span>`:''}${p.badge?`<span class="tag b">${esc(p.badge)}</span>`:''}
     <div class="ph">${img(p)}</div>
     <div class="cb"><span class="cat">${esc(p.category)}</span><h3>${esc(p.name)}</h3>
-    ${soldOut(p)?'<span class="sold">Out of stock</span>':`<div class="pr"><span style="font-size:12px;color:var(--mute)">From</span><b>${rs(v.final)}</b>${v.pct?`<s>${rs(v.price)}</s>`:''}</div>`}
+    ${soldOut(p)?'<span class="sold">Out of stock · tap to request</span>':`<div class="pr"><span style="font-size:12px;color:var(--mute)">From</span><b>${rs(v.final)}</b>${v.pct?`<s>${rs(v.price)}</s>`:''}</div>`}
     </div></div>`;
 }
 function render(){
@@ -371,13 +373,29 @@ function drawP(){
     <div class="bigp">${rs(v.final*qty)}${v.pct?`<s>${rs(v.price*qty)}</s><span class="save">${v.pct}% OFF</span>`:''}</div>
     <p>${esc(p.description)}</p>
     ${(n.top.length||n.heart.length||n.base.length)?`<div><div class="cat" style="margin-bottom:6px">Fragrance Notes</div><div class="pyr">${row('Top',n.top)}${row('Heart',n.heart)}${row('Base',n.base)}</div></div>`:''}
-    <div><div class="cat" style="margin-bottom:6px">Size</div><div class="sizes">${p.variants.map(x=>`<button class="size ${x.size===sel?'on':''} ${x.stock<=0?'off':''}" data-s="${esc(x.size)}" ${x.stock<=0?'disabled':''}>${esc(x.size)}<small>${rs(x.final)}${x.stock<=0?' · Sold out':x.stock<=5?' · Only '+x.stock+' left':''}</small></button>`).join('')}</div></div>
-    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:6px">
+    <div><div class="cat" style="margin-bottom:6px">Size</div><div class="sizes">${p.variants.map(x=>`<button class="size ${x.size===sel?'on':''} ${x.stock<=0?'off':''}" data-s="${esc(x.size)}">${esc(x.size)}<small>${rs(x.final)}${x.stock<=0?' · Sold out':x.stock<=5?' · Only '+x.stock+' left':''}</small></button>`).join('')}</div></div>
+    ${v.stock<=0?reqUI(p,v):`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:6px">
       <div class="qty"><button id="qm">−</button><span>${qty}</span><button id="qp">+</button></div>
-      <button class="btn" id="add" ${v.stock<=0?'disabled':''}>${v.stock<=0?'Out of stock':'Add to Cart'}</button></div>
+      <button class="btn" id="add">Add to Cart</button></div>`}
   </div></div>`;
 }
-$('#pov').addEventListener('click',e=>{
+let reqSent={};
+function reqUI(p,v){
+  const k=p.id+'|'+v.size;let sv={};try{sv=JSON.parse(localStorage.getItem('zcust')||'{}')}catch{}
+  if(reqSent[k])return `<div class="reqbox"><b>✓ Request received</b><small>Jaise hi ${esc(p.name)} (${esc(v.size)}) stock mein aaye gi, hum aap ko batayenge.</small></div>`;
+  return `<div class="reqbox"><b>${esc(v.size)} abhi stock mein nahi hai</b><small>Apna number chor dein, stock aate hi hum aap se rabta karenge.</small>
+   <input id="rqn" placeholder="Your name *" value="${esc(sv.name)}"><input id="rqp" placeholder="Phone / WhatsApp *" inputmode="tel" value="${esc(sv.phone)}">
+   <input id="rqq" type="number" min="1" max="20" value="1" placeholder="Quantity">
+   <div class="msg er" id="rqe"></div><button class="btn" id="rqgo">Notify me / Request this</button></div>`;
+}
+$('#pov').addEventListener('click',async e=>{
+  if(e.target.id==='rqgo'){
+    const b=e.target,body={pid:cur.id,size:sel,name:$('#rqn').value,phone:$('#rqp').value,qty:$('#rqq').value};
+    b.disabled=true;
+    try{const r=await fetch('/api/request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();
+      if(!r.ok){$('#rqe').textContent=d.error||'Error';b.disabled=false;return}
+      reqSent[cur.id+'|'+sel]=1;drawP()}catch{$('#rqe').textContent='Network error';b.disabled=false}
+    return}
   if(e.target.id==='pov'||e.target.id==='pc')return $('#pov').classList.remove('on');
   const s=e.target.closest('[data-s]');if(s){sel=s.dataset.s;qty=1;return drawP()}
   const g=e.target.closest('[data-gi]');if(g){gi=+g.dataset.gi;return drawP()}
@@ -419,7 +437,8 @@ function renderCart(){
     ${t.cd?`<div class="row"><span>Coupon (${esc(coupon.code)})</span><span>− ${rs(t.cd)}</span></div>`:''}
     ${S.deliveryMode==='fixed'?`<div class="row"><span>Delivery</span><span>${t.del?rs(t.del):'FREE'}</span></div>`:`<div class="dnote">${esc(S.deliveryNote)}</div>`}
     <div class="row t"><span>Total</span><span>${rs(t.total)}</span></div>
-    <button class="btn" id="checkout">Checkout (Cash on Delivery)</button>`:'';
+    <div class="dnote">🚚 Estimated delivery: ${esc(S.deliveryDays||'7 working days')}</div>
+    <button class="btn" id="checkout">Checkout</button>`:'';
 }
 function openCart(){$('#drawer').classList.add('on')}
 $('#cartBtn').onclick=openCart;$('#closeCart').onclick=()=>$('#drawer').classList.remove('on');
@@ -475,6 +494,7 @@ function openCheckout(){
     ${payUI()}
     <div class="row t"><span>Total</span><span>${rs(t.total)}</span></div>
     ${S.deliveryMode==='fixed'?'':`<div class="dnote">${esc(S.deliveryNote)}</div>`}
+    <div class="dnote">🚚 Estimated delivery: ${esc(S.deliveryDays||'7 working days')}</div>
     <div class="msg er" id="cer"></div>
     <button class="btn" id="place">Place Order</button></form>`;
   CK_TOTAL=t.total;updPay();$('#drawer').classList.remove('on');$('#cov').classList.add('on');
@@ -492,13 +512,12 @@ $('#cov').addEventListener('submit',async e=>{
       if(/bacha|available/.test(d.error||'')){const s=await (await fetch('/api/shop')).json();P=s.products;renderCart();render()}return}
     try{localStorage.setItem('zcust',JSON.stringify({name:cu.name,phone:cu.phone,city:cu.city,address:cu.address}))}catch{}
     const o=d.order;cart=[];coupon=null;save();renderCart();$('#drawer').classList.remove('on');
-    const msg=`New order ${o.id}\nName: ${o.customer.name}\nPhone: ${o.customer.phone}\n`+o.lines.map(l=>`• ${l.name} ${l.size} x${l.qty} = ${rs(l.total)}`).join('\n')+`\nTotal: ${rs(o.total)}\nPayment: ${o.payment}${o.paymentRef?' (Txn '+o.paymentRef+')':''}${o.deliveryNote?'\nDelivery charges as per area (paid separately)':''}`;
     const online=o.payment!=='COD',pk=PAYK[o.payment];
-    $('#cm').innerHTML=`<div class="ok-box"><h2>Thank you!</h2><p>Your order <b>${esc(o.id)}</b> has been placed.<br>${online?`Amount to pay now: <b>${rs(o.total)}</b>`:`Total to pay on delivery: <b>${rs(o.total)}</b>`}</p>
-      ${online&&pk?acctBox(pk,o.total):''}${o.deliveryNote?`<div class="dnote">${esc(o.deliveryNote)}</div>`:''}
+    const pmsg=`Payment sent for order ${o.id}\nName: ${o.customer.name}\nAmount: ${rs(o.total)} via ${o.payment}\n(Screenshot attached)`;
+    $('#cm').innerHTML=`<div class="ok-box"><h2>Thank you, ${esc(o.customer.name.split(' ')[0])}! 🎉</h2><p>Your order <b>${esc(o.id)}</b> has been placed successfully.<br>${online?`Amount to pay now: <b>${rs(o.total)}</b>`:`Total to pay on delivery: <b>${rs(o.total)}</b>`}</p>
+      ${online&&pk?acctBox(pk,o.total)+(S.whatsapp?`<a class="btn" target="_blank" rel="noopener" href="https://wa.me/${S.whatsapp}?text=${encodeURIComponent(pmsg)}">Send payment screenshot on WhatsApp</a>`:''):''}
+      <div class="dnote">🚚 Estimated delivery: <b>${esc(S.deliveryDays||'7 working days')}</b>${o.deliveryNote?'<br>'+esc(o.deliveryNote):''}</div>
       <p style="color:var(--mute)">${online?'We will confirm your order after receiving the payment.':'We will contact you on '+esc(o.customer.phone)+' to confirm.'}</p>
-      ${S.whatsapp?`<a class="btn" target="_blank" rel="noopener" href="https://wa.me/${S.whatsapp}?text=${encodeURIComponent(msg)}">Confirm on WhatsApp</a>`:''}
-      <a class="btn ghost" target="_blank" href="/invoice?id=${encodeURIComponent(o.id)}&t=${encodeURIComponent(o.token||'')}">View / Print Invoice</a>
       <button class="btn ghost" id="done">Continue Shopping</button></div>`;
     const s=await (await fetch('/api/shop')).json();P=s.products;render();
   }catch{ $('#cer').textContent='Network error, try again.';btn.disabled=false;btn.textContent='Place Order'}
