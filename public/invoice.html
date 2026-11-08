@@ -83,6 +83,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const rs=n=>'Rs. '+Number(n||0).toLocaleString('en-PK');
 const q=new URLSearchParams(location.search);
 let DATA=null;
+function igH(u){u=String(u||'').trim();if(!u)return '';const m=u.match(/instagram\.com\/([\w.]+)/i);if(m)return '@'+m[1];return /^@?[\w.]+$/.test(u)?'@'+u.replace('@',''):''}
 function waNum(p){let d=String(p||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(d.startsWith('92')&&d.length===12)return d;if(d.startsWith('0')&&d.length===11)return '92'+d.slice(1);if(d.length===10&&d.startsWith('3'))return '92'+d;return d}
 function render(){
   const {order:o,shop:s}=DATA;
@@ -100,7 +101,7 @@ function render(){
   else paid=o.paid?(o.delivery>0?`Paid ${rs(o.total-o.delivery)} online via ${esc(o.payment)}. Delivery charges ${rs(o.delivery)} to be paid on delivery.`:`Paid online via ${esc(o.payment)}`):`Online payment via ${esc(o.payment)}: awaiting confirmation${o.paymentRef?' (Txn: '+esc(o.paymentRef)+')':''}`;
   const rows=o.lines.map((l,i)=>`<tr><td class="hide-s">${i+1}</td><td><b>${esc(l.name)}</b><br><span style="color:#6b665a">${esc(l.size)} × ${l.qty}</span></td><td class="r hide-s">${rs(l.orig)}</td><td class="r hide-s">${l.orig>l.unit?'-'+rs((l.orig-l.unit)*l.qty):'—'}</td><td class="r">${rs(l.total)}</td></tr>`).join('');
   $('#root').innerHTML=`<div class="paper">
-   <div class="hd"><div class="brand">${s.logo?`<img src="/api/img/${esc(s.logo)}" alt="">`:''}<div><h1>${esc(s.shopName)}</h1><p>${[s.address,s.phone&&'Phone: '+s.phone,s.instagram,s.facebook].filter(Boolean).map(esc).join('<br>')}</p></div></div>
+   <div class="hd"><div class="brand">${s.logo?`<img src="/api/img/${esc(s.logo)}" alt="">`:''}<div><h1>${esc(s.shopName)}</h1><p>${[s.address,s.phone&&'Phone: '+s.phone,igH(s.instagram)&&'Instagram: '+igH(s.instagram),s.facebook&&'Facebook: '+s.shopName].filter(Boolean).map(esc).join('<br>')}</p></div></div>
     <div class="meta"><h2>${o.source==='store'?'RECEIPT':'INVOICE'}</h2><p><b>${esc(o.id)}</b><br>${esc(date)}</p></div></div>
    <div class="two"><div><div class="lbl">Billed to</div><b>${esc(cu.name||'Customer')}</b><br>${[cu.phone,cu.address,cu.city].filter(Boolean).map(esc).join('<br>')}</div>
     <div><div class="lbl">Order</div>${o.source==='store'?'In-store sale':'Online order'}<br>Status: ${esc(o.status)}${o.coupon?`<br>Coupon: ${esc(o.coupon)}`:''}</div></div>
