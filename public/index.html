@@ -30,7 +30,22 @@ input,textarea,select{font:inherit;color:var(--ink);background:var(--bg2);border
 input:focus,textarea:focus,select:focus{outline:2px solid var(--gold);outline-offset:-1px}
 .wrap{max-width:1200px;margin:0 auto;padding:0 18px}
 .gtext{background:linear-gradient(100deg,var(--gold2),var(--gold) 45%,var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
-.ann{background:linear-gradient(90deg,var(--gold),var(--gold2),var(--gold));color:var(--on);text-align:center;font-size:13px;font-weight:600;padding:7px 12px;letter-spacing:.3px}
+.ann{background:linear-gradient(90deg,var(--gold),var(--gold2),var(--gold));color:var(--on);text-align:center;font-size:13px;font-weight:600;padding:7px 12px;letter-spacing:.3px;overflow:hidden}
+.ann.b{font-weight:800}
+.ann .t{display:inline-block}
+.ann.sl .t{white-space:nowrap;padding-left:100%;animation:annsl var(--d,15s) linear infinite}
+.ann.bl{animation:annbl 1s ease-in-out infinite}
+@keyframes annsl{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+@keyframes annbl{0%,45%{opacity:1}55%,100%{opacity:.2}}
+@media(prefers-reduced-motion:reduce){.ann.sl .t{padding-left:0;white-space:normal}}
+.rvs{display:grid;grid-auto-flow:column;grid-auto-columns:min(300px,82%);gap:14px;overflow-x:auto;padding:4px 2px 14px;scroll-snap-type:x mandatory}
+.rv{scroll-snap-align:start;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:8px;align-content:start}
+.rv .st{color:var(--gold2);letter-spacing:2px;font-size:16px}
+.rv p{margin:0;font-size:14px;line-height:1.5}.rv small{color:var(--mute)}
+.rv .src{font-size:11px;border:1px solid var(--line);border-radius:99px;padding:2px 8px;color:var(--mute);justify-self:start}
+.rvbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px;align-items:center}
+.starin{display:flex;gap:6px;font-size:30px;cursor:pointer;color:var(--gold2);user-select:none}
+.starin span{opacity:.35}.starin span.on{opacity:1}
 header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .nav{display:flex;align-items:center;justify-content:space-between;height:70px;gap:12px}
 .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
@@ -256,6 +271,12 @@ footer a{color:var(--gold2)}
   <div class="grid" id="grid"><div class="empty">Loading...</div></div>
 </div></section>
 
+<section id="reviews" style="padding-top:20px"><div class="wrap">
+  <div class="sh center" style="justify-content:center"><div><h2 class="gtext">What Customers Say</h2><div class="orn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 10-3 10-3-10z"/></svg></div><div id="rvAvg" style="text-align:center;color:var(--mute);margin-top:6px"></div></div></div>
+  <div class="rvs" id="rvList"></div>
+  <div class="rvbar"><button class="btn" id="rvWrite">Write a Review</button><a class="btn ghost" id="rvFb" target="_blank" rel="noopener" style="display:none">More reviews on Facebook</a></div>
+</div></section>
+
 <section id="why" style="padding-top:20px"><div class="wrap">
   <div class="sh center" style="justify-content:center"><div><h2 class="gtext">Why Zeen's Fragrance</h2><div class="orn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 10-3 10-3-10z"/></svg></div></div></div>
   <div class="feat">
@@ -289,7 +310,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rs=n=>'Rs. '+Number(n).toLocaleString('en-PK');
 const BOTTLE=`<svg viewBox="0 0 100 130" fill="none"><defs><linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--gold2)"/><stop offset="1" style="stop-color:var(--gold)"/></linearGradient></defs><rect x="40" y="6" width="20" height="14" rx="3" fill="url(#bg1)"/><rect x="44" y="20" width="12" height="10" fill="url(#bg1)" opacity=".7"/><rect x="18" y="30" width="64" height="92" rx="14" style="fill:color-mix(in srgb,var(--gold) 14%,transparent)" stroke="url(#bg1)" stroke-width="2.5"/><rect x="28" y="62" width="44" height="34" rx="4" stroke="url(#bg1)" stroke-width="1.5"/><text x="50" y="86" text-anchor="middle" font-family="Georgia,serif" font-size="22" style="fill:var(--gold2)">Z</text><path d="M26 42c0-5 4-8 9-8" stroke="#fff" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/></svg>`;
-let S={},P=[],cat='all',cart=[];
+let S={},P=[],cat='all',cart=[],RV=[];
 try{cart=JSON.parse(localStorage.getItem('zcart')||'[]')}catch{}
 let coupon=null;
 
@@ -298,8 +319,50 @@ const isT=v=>/tester/i.test(v.size);
 const minV=p=>{const main=p.variants.filter(v=>!isT(v));const pool=main.length?main:p.variants;const a=pool.filter(v=>v.stock>0);return (a.length?a:pool).reduce((m,v)=>v.final<m.final?v:m)};
 const soldOut=p=>p.variants.every(v=>v.stock<=0);
 
+function drawAnn(){
+  const a=$('#ann'),t=String(S.announcement||'').trim();
+  if(!t){a.style.display='none';return}
+  const eff=S.annEffect||'static',sl=eff==='slide'||eff==='slideblink',bl=eff==='blink'||eff==='slideblink';
+  const k={slow:1.7,normal:1,fast:.55}[S.annSpeed||'normal']||1;
+  a.className='ann'+(S.annBold?' b':'')+(sl?' sl':'')+(bl?' bl':'');
+  a.style.display='';a.style.setProperty('--d',Math.round((8+t.length*.22)*k)+'s');
+  a.style.color=S.annColor||'';a.style.background=S.annBg||'';
+  a.innerHTML='<span class="t"></span>';a.firstChild.textContent=t;
+}
+const SRC={facebook:'Facebook',website:'Website',instagram:'Instagram',whatsapp:'WhatsApp'};
+function renderReviews(){
+  const n=RV.length,avg=n?(RV.reduce((s,r)=>s+r.rating,0)/n):0;
+  const stars=k=>'★'.repeat(k)+'☆'.repeat(5-k);
+  $('#rvAvg').innerHTML=n?`<b style="color:var(--gold2)">${avg.toFixed(1)}</b> ${stars(Math.round(avg))} · ${n} review${n>1?'s':''}`:'Be the first to review!';
+  $('#rvList').innerHTML=RV.map(r=>`<div class="rv"><div class="st">${stars(r.rating)}</div><p>${esc(r.text)}</p><div><b>${esc(r.name)}</b> <small>· ${new Date(r.createdAt).toLocaleDateString('en-GB',{month:'short',year:'numeric'})}</small></div><span class="src">${esc(SRC[r.source]||'Customer')}</span></div>`).join('');
+  $('#rvList').style.display=n?'':'none';
+  const fb=String(S.facebook||'').trim();
+  if(fb){const u=/^https?:\/\//i.test(fb)?fb:'https://facebook.com/'+fb.replace(/^@/,'');$('#rvFb').href=u;$('#rvFb').style.display=''}
+}
+let RVR=5;
+function openReview(){
+  let sv={};try{sv=JSON.parse(localStorage.getItem('zcust')||'{}')}catch{}
+  RVR=5;
+  $('#cm').innerHTML=`<button class="x" id="cc">×</button><div class="form"><h2>Write a Review</h2>
+   <input id="rvn" placeholder="Your name *" value="${esc(sv.name)}">
+   <div class="starin" id="rvStars">${[1,2,3,4,5].map(i=>`<span data-r="${i}" class="on">★</span>`).join('')}</div>
+   <textarea id="rvt" rows="4" placeholder="Share your experience with our perfume *"></textarea>
+   <input id="rvh" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+   <div class="msg er" id="rve"></div><button class="btn" id="rvgo" type="button">Submit Review</button></div>`;
+  $('#cov').classList.add('on');
+}
+$('#rvWrite').onclick=openReview;
+$('#cov').addEventListener('click',async e=>{
+  const st=e.target.closest('[data-r]');if(st&&$('#rvStars')){RVR=+st.dataset.r;$('#rvStars').querySelectorAll('span').forEach(x=>x.classList.toggle('on',+x.dataset.r<=RVR));return}
+  if(e.target.id==='rvgo'){
+    const b=e.target;b.disabled=true;
+    try{const r=await fetch('/api/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('#rvn').value,rating:RVR,text:$('#rvt').value,website:$('#rvh').value})});const d=await r.json();
+      if(!r.ok){$('#rve').textContent=d.error||'Error';b.disabled=false;return}
+      $('#cm').innerHTML='<div class="ok-box"><h2>Thank you! 💛</h2><p>Your review has been received. It will appear on the website after approval.</p><button class="btn ghost" id="done">Close</button></div>'}
+    catch{$('#rve').textContent='Network error';b.disabled=false}}
+});
 async function init(){
-  const r=await fetch('/api/shop');const d=await r.json();S=d.settings;P=d.products;
+  const r=await fetch('/api/shop');const d=await r.json();S=d.settings;P=d.products;RV=d.reviews||[];
   if(S.theme){applyTheme(S.theme);try{localStorage.setItem('zth',JSON.stringify(S.theme))}catch{}}
   document.title=S.shopName+' | Luxury Perfumes';
   $('#shopName').textContent=S.shopName;
@@ -307,7 +370,7 @@ async function init(){
   $('#logoMark').innerHTML=S.logo?`<img src="/api/img/${S.logo}" alt="${esc(S.shopName)} logo">`:mono;
   $('#fLogo').innerHTML=S.logo?`<img class="fl" src="/api/img/${S.logo}" alt="">`:`<div class="mono">${esc((S.shopName||'Z').trim()[0]||'Z')}</div>`;
   if(S.logo)$('#fav').href='/api/img/'+S.logo;
-  $('#ann').textContent=S.announcement||'';$('#ann').style.display=S.announcement?'':'none';
+  drawAnn();renderReviews();
   $('#heroT').textContent=S.heroTitle;$('#heroS').textContent=S.heroSub;
   $('#tag').textContent=S.tagline||'';
   $('#heroArt').innerHTML=S.heroImage?`<img class="himg ${lum(S.theme.bg)>.5?'mult':''}" alt="" src="/api/img/${S.heroImage}">`:BOTTLE.replace('<svg','<svg class="bot"');
