@@ -46,6 +46,7 @@ async function getProducts() {
 const getOrders = async () => (await db.get('orders')) || [];
 const getCoupons = async () => (await db.get('coupons')) || [];
 const getExpenses = async () => (await db.get('expenses')) || [];
+const getRequests = async () => (await db.get('requests')) || [];
 const newToken = () => crypto.randomBytes(8).toString('hex');
 
 async function readBody(req) {
@@ -131,6 +132,7 @@ module.exports = async (req, res) => {
         id, no, token: newToken(), createdAt: new Date().toISOString(), source: 'online', status: 'pending', payment: PAYL[pm],
         paymentRef: pm === 'cod' ? '' : str(body.payment.ref, 60), paid: false,
         deliveryNote: settings.deliveryMode === 'fixed' ? '' : settings.deliveryNote,
+        dcSet: settings.deliveryMode === 'fixed',
         customer, lines, ...t, coupon: coupon && t.discount ? coupon.code : '',
       };
       await db.set('products', products);
@@ -140,6 +142,26 @@ module.exports = async (req, res) => {
       return send(200, { ok: true, order: L.stripCost(order) });
     }
 
+    // customer asks for an out-of-stock perfume
+    if (method === 'POST' && a === 'request') {
+      const body = await readBody(req);
+      const name = str(body.name, 80), phone = str(body.phone, 20);
+      if (!name || !/^[+\d][\d\s-]{6,18}$/.test(phone)) return send(400, { error: 'Naam aur sahi phone number likhein' });
+      const products = await getProducts();
+      const p = products.find((x) => x.id === body.pid && x.active);
+      const v = p && p.variants.find((x) => x.size === body.size);
+      if (!p || !v) return send(400, { error: 'Product nahi mila' });
+      const list = await getRequests();
+      const dig = phone.replace(/\D/g, '');
+      const dup = list.find((r) => r.status === 'open' && r.pid === p.id && r.size === v.size && r.phone.replace(/\D/g, '') === dig);
+      if (!dup) {
+        list.unshift({ id: 'r_' + crypto.randomBytes(5).toString('hex'), pid: p.id, pname: p.name, size: v.size, name, phone,
+          qty: L.clamp(Math.round(L.num(body.qty, 1)), 1, 20), note: str(body.note, 200), createdAt: new Date().toISOString(), status: 'open' });
+        await db.set('requests', list.slice(0, 500));
+      }
+      return send(200, { ok: true });
+    }
+
     // public invoice (needs the secret token from the invoice link, or admin login)
     if (method === 'GET' && a === 'invoice' && b) {
       const o = (await getOrders()).find((x) => x.id === b);
@@ -147,8 +169,9 @@ module.exports = async (req, res) => {
       const admin = isAdmin(req);
       const tokOk = !!(o && o.token && t.length === o.token.length && crypto.timingSafeEqual(Buffer.from(t), Buffer.from(o.token)));
       if (!o || !(admin || tokOk)) return send(404, { error: 'Invoice nahi mila' });
+      if (o.source !== 'store' && o.dcSet === false) return send(409, { error: 'Delivery charges abhi set nahi hue. Thori der baad try karein.' });
       const st = await getSettings();
-      const shop = { shopName: st.shopName, logo: st.logo, address: st.address, phone: st.phone, whatsapp: st.whatsapp, instagram: st.instagram, facebook: st.facebook, invoiceNote: st.invoiceNote, invoiceTerms: st.invoiceTerms, accent: st.theme.accent };
+      const shop = { shopName: st.shopName, logo: st.logo, address: st.address, phone: st.phone, whatsapp: st.whatsapp, instagram: st.instagram, facebook: st.facebook, invoiceNote: st.invoiceNote, invoiceTerms: st.invoiceTerms, deliveryDays: st.deliveryDays, accent: st.theme.accent };
       return send(200, { order: admin ? o : L.stripCost(o), shop });
     }
 
@@ -175,11 +198,11 @@ module.exports = async (req, res) => {
       if (!isAdmin(req)) return send(401, { error: 'Login zaroori hai' });
 
       if (method === 'GET' && b === 'data') {
-        const [settings, products, orders, coupons, expenses] = await Promise.all([getSettings(), getProducts(), getOrders(), getCoupons(), getExpenses()]);
+        const [settings, products, orders, coupons, expenses, requests] = await Promise.all([getSettings(), getProducts(), getOrders(), getCoupons(), getExpenses(), getRequests()]);
         let changed = false;
         for (const o of orders) if (!o.token) { o.token = newToken(); changed = true; }
         if (changed) await db.set('orders', orders);
-        return send(200, { settings, products, orders, coupons, expenses });
+        return send(200, { settings, products, orders, coupons, expenses, requests });
       }
 
       if (method === 'POST' && b === 'image') {
@@ -212,6 +235,33 @@ module.exports = async (req, res) => {
         if (p) for (const im of p.images) await db.del('img:' + im);
         await db.set('products', products.filter((x) => x.id !== c));
         return send(200, { ok: true });
+      }
+
+      if (method === 'POST' && b === 'order' && c && parts[3] === 'dc') {
+        const body = await readBody(req);
+        const orders = await getOrders();
+        const o = orders.find((x) => x.id === c);
+        if (!o) return send(404, { error: 'Order nahi mila' });
+        if (o.status === 'cancelled') return send(400, { error: 'Cancelled order mein DC set nahi ho sakta' });
+        const amt = L.clamp(Math.round(L.num(body.amount)), 0, 5000);
+        o.delivery = amt;
+        o.total = o.subtotal - o.discount + amt;
+        o.dcSet = true;
+        await db.set('orders', orders);
+        return send(200, { ok: true, order: o });
+      }
+
+      if (b === 'request' && c) {
+        const list = await getRequests();
+        if (method === 'DELETE') { await db.set('requests', list.filter((x) => x.id !== c)); return send(200, { ok: true }); }
+        if (method === 'POST') {
+          const body = await readBody(req);
+          const r = list.find((x) => x.id === c);
+          if (!r) return send(404, { error: 'Request nahi mili' });
+          r.status = body.status === 'done' ? 'done' : 'open';
+          await db.set('requests', list);
+          return send(200, { ok: true });
+        }
       }
 
       if (method === 'POST' && b === 'order' && c && parts[3] === 'paid') {
@@ -252,7 +302,7 @@ module.exports = async (req, res) => {
         L.applyStock(products, lines, -1);
         const { no, id } = await nextOrderId();
         const order = {
-          id, no, token: newToken(), createdAt: new Date().toISOString(), source: 'store', status: 'delivered',
+          id, no, token: newToken(), createdAt: new Date().toISOString(), source: 'store', status: 'delivered', dcSet: true,
           payment: ['Cash', 'Card', 'Bank Transfer', 'Easypaisa', 'JazzCash'].includes(body.payment) ? body.payment : 'Cash', paid: true,
           customer: { name: str(body.customerName, 80) || 'Walk-in', phone: str(body.customerPhone, 20), city: '', address: '', note: '' },
           lines, ...t, coupon: '',
@@ -288,6 +338,7 @@ module.exports = async (req, res) => {
         }
         next.facebook = body.facebook === undefined ? cur.facebook : str(body.facebook, 150);
         next.deliveryMode = body.deliveryMode === undefined ? cur.deliveryMode : body.deliveryMode === 'fixed' ? 'fixed' : 'note';
+        next.deliveryDays = body.deliveryDays === undefined ? cur.deliveryDays : str(body.deliveryDays, 40) || '7 working days';
         next.deliveryNote = body.deliveryNote === undefined ? cur.deliveryNote : str(body.deliveryNote, 220);
         if (body.payments) {
           const bp = body.payments;
