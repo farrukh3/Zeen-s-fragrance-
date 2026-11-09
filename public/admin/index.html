@@ -140,14 +140,84 @@ function dash(){
 }
 
 // ---------- products ----------
+const normN=x=>String(x||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+function bulkModal(html){$('#modal').innerHTML=html;$('#ov').classList.add('on');const c=$('#bmc');if(c)c.onclick=()=>$('#ov').classList.remove('on')}
+function bulkAdd(){
+  bulkModal(`<h2>Bulk Add Products</h2><p class="mut">Option 1: Zeen ki di hui <b>JSON file</b> chunein (poore perfumes notes ke saath). Option 2: neeche list likhein, har line mein:<br><code>Name | men/women/unisex | 50ml price | 30ml price</code><br>(category aur prices likhna zaroori nahi, nahi likhein to 1500 / 1000 lag jayegi)</p>
+  <label>JSON file<input type="file" id="bjf" accept=".json,application/json"></label>
+  <label>Ya list paste karein<textarea id="bjt" rows="6" placeholder="Dior Sauvage | men | 1500 | 1000&#10;Gucci Flora | women"></textarea></label>
+  <label>Har size ka stock<input type="number" id="bjs" min="0" value="10"></label>
+  <div class="mut" id="bjl" style="max-height:140px;overflow:auto"></div>
+  <div class="bar" style="margin:0"><button class="btn" id="bjg">Import</button><button class="btn g" id="bmc">Close</button></div>`);
+  $('#bjg').onclick=async()=>{
+    const log=m=>{$('#bjl').innerHTML+=m+'<br>';$('#bjl').scrollTop=1e9};
+    let list=[];
+    try{
+      const f=$('#bjf').files[0];let txt=$('#bjt').value.trim();
+      if(f)txt=(await f.text()).trim();
+      if(!txt)return toast('File chunein ya list likhein',1);
+      if(txt[0]==='['){list=JSON.parse(txt)}
+      else list=txt.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const [n,c,a,b]=l.split('|').map(x=>x.trim());
+        return {name:n,category:['men','women','unisex'].includes((c||'').toLowerCase())?c.toLowerCase():'unisex',description:n+' by Zeen\'s Fragrance. Long-lasting Eau de Parfum.',notes:{top:[],heart:[],base:[]},
+          variants:[{size:'50ml',price:+a||1500,cost:0,discount:10,stock:0},{size:'30ml',price:+b||1000,cost:0,discount:15,stock:0}]}});
+    }catch(x){return toast('List/file samajh nahi aayi: '+x.message,1)}
+    const have=new Set(D.products.map(p=>normN(p.name)));const st=Math.max(0,+$('#bjs').value||0);
+    $('#bjg').disabled=true;let ok=0,skip=0,bad=0;
+    for(const p of list){
+      if(!p||!p.name){bad++;continue}
+      if(have.has(normN(p.name))){skip++;log('⏭ '+esc(p.name)+' (pehle se hai)');continue}
+      try{p.variants=(p.variants||[]).map(v=>({...v,stock:st}));await api('admin/product','POST',p);have.add(normN(p.name));ok++;log('✓ '+esc(p.name))}
+      catch(x){bad++;log('✗ '+esc(p.name)+': '+esc(x.message))}
+    }
+    log(`<b>Done: ${ok} added, ${skip} skipped, ${bad} failed.</b>`);toast(`${ok} products add ho gaye`);$('#bjg').disabled=false;await load();
+  };
+}
+async function unzipImgs(file){
+  const buf=await file.arrayBuffer(),dv=new DataView(buf),u8=new Uint8Array(buf);
+  let e=buf.byteLength-22;while(e>=0&&dv.getUint32(e,true)!==0x06054b50)e--;
+  if(e<0)throw new Error('Zip file sahi nahi hai');
+  const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);const out=[];
+  for(let i=0;i<n;i++){
+    if(dv.getUint32(p,true)!==0x02014b50)break;
+    const method=dv.getUint16(p+10,true),csz=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),off=dv.getUint32(p+42,true);
+    const name=new TextDecoder().decode(u8.subarray(p+46,p+46+nl));p+=46+nl+el+cl;
+    if(name.endsWith('/')||name.includes('__MACOSX')||!/\.(png|jpe?g|webp)$/i.test(name))continue;
+    const ds=off+30+dv.getUint16(off+26,true)+dv.getUint16(off+28,true);let data=u8.subarray(ds,ds+csz);
+    if(method===8){data=new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer())}else if(method!==0)continue;
+    const b=name.split('/').pop();out.push(new File([data],b,{type:/\.webp$/i.test(b)?'image/webp':/\.png$/i.test(b)?'image/png':'image/jpeg'}));
+  }
+  return out;
+}
+function bulkImgs(){
+  bulkModal(`<h2>Bulk Images</h2><p class="mut">Ek <b>zip file</b> ya bohat si images chunein. Har image ka <b>file ka naam = perfume ka naam</b> hona chahiye (e.g. <code>Dior Sauvage.webp</code>). Naam se khud sahi product mein lag jayengi. Product ki purani images replace ho jayengi.</p>
+  <label>Zip ya images<input type="file" id="bif" multiple accept=".zip,image/*"></label>
+  <div class="mut" id="bil" style="max-height:200px;overflow:auto"></div>
+  <div class="bar" style="margin:0"><button class="btn" id="big">Upload</button><button class="btn g" id="bmc">Close</button></div>`);
+  $('#big').onclick=async()=>{
+    const log=m=>{$('#bil').innerHTML+=m+'<br>';$('#bil').scrollTop=1e9};
+    const picked=[...$('#bif').files];if(!picked.length)return toast('Pehle zip ya images chunein',1);
+    $('#big').disabled=true;let files=[];
+    try{for(const f of picked){if(/\.zip$/i.test(f.name)||f.type==='application/zip'||f.type==='application/x-zip-compressed')files.push(...await unzipImgs(f));else files.push(f)}}
+    catch(x){toast(x.message,1);$('#big').disabled=false;return}
+    log(files.length+' images mili');let ok=0,miss=0;
+    for(const f of files){
+      const key=normN(f.name.replace(/\.[^.]+$/,''));const pr=D.products.find(p=>normN(p.name)===key);
+      if(!pr){miss++;log('? '+esc(f.name)+': is naam ka product nahi mila');continue}
+      try{const dataUrl=await resize(f,900,'image/webp',.9);const r=await api('admin/image','POST',{dataUrl});
+        await api('admin/product','POST',{...pr,images:[r.id]});ok++;log('✓ '+esc(pr.name))}
+      catch(x){log('✗ '+esc(f.name)+': '+esc(x.message))}
+    }
+    log(`<b>Done: ${ok} images lag gayi, ${miss} ka product nahi mila.</b>`);toast(ok+' images lag gayi');$('#big').disabled=false;await load();
+  };
+}
 function prod(){
-  M(`<h2>Products</h2><div class="bar"><button class="btn" id="np">+ Add Product</button><input id="ps" placeholder="Search..."></div>
+  M(`<h2>Products</h2><div class="bar"><button class="btn" id="np">+ Add Product</button><button class="btn g" id="bk1">Bulk Add</button><button class="btn g" id="bk2">Bulk Images</button><input id="ps" placeholder="Search..."></div>
   <div class="panel"><table><thead><tr><th></th><th>Name</th><th>Category</th><th>Sizes / price / stock</th><th>Status</th><th></th></tr></thead><tbody id="pt"></tbody></table></div>`);
   const fill=()=>{const q=$('#ps').value.toLowerCase();$('#pt').innerHTML=D.products.filter(p=>p.name.toLowerCase().includes(q)).map(p=>`<tr><td>${thumb(p)}</td><td><b>${esc(p.name)}</b>${p.featured?' ★':''}</td><td>${esc(p.category)}</td>
    <td>${p.variants.map(v=>`${esc(v.size)}: ${rs(v.price)}${v.discount?` (-${v.discount}%)`:''} · <span class="${v.stock<=3?'low':''}">stock ${v.stock}</span>`).join('<br>')}</td>
    <td><span class="pill ${p.active?'delivered':'cancelled'}">${p.active?'Visible':'Hidden'}</span></td>
    <td style="white-space:nowrap"><button class="btn g s" data-e="${p.id}">Edit</button> <button class="btn r s" data-d="${p.id}">Delete</button></td></tr>`).join('')||'<tr><td colspan=6 class="mut">No products.</td></tr>'};
-  fill();$('#ps').oninput=fill;$('#np').onclick=()=>pform(null);
+  fill();$('#ps').oninput=fill;$('#np').onclick=()=>pform(null);$('#bk1').onclick=bulkAdd;$('#bk2').onclick=bulkImgs;
   $('#pt').onclick=async e=>{
     const ed=e.target.closest('[data-e]');if(ed)return pform(D.products.find(p=>p.id===ed.dataset.e));
     const dl=e.target.closest('[data-d]');if(dl&&confirm('Delete this product permanently?')){await api('admin/product/'+dl.dataset.d,'DELETE');toast('Deleted');await load()}
