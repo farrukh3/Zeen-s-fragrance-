@@ -344,23 +344,46 @@ function ordTable(list,ctl=true){
    <td>${esc(o.customer.name)}<br><span class="mut">${esc(o.customer.phone)}</span>${o.customer.address?`<br><span class="mut">${esc(o.customer.address)}, ${esc(o.customer.city)}</span>`:''}${o.customer.note?`<br><i class="mut">${esc(o.customer.note)}</i>`:''}</td>
    <td>${o.lines.map(l=>`${esc(l.name)} ${esc(l.size)} ×${l.qty}`).join('<br>')}</td>
    <td>${rs(o.total)}<br><span class="mut">${esc(o.payment)}${o.coupon?' · '+esc(o.coupon):''}${o.paymentRef?'<br>Txn: '+esc(o.paymentRef):''}</span>${o.source!=='store'&&o.status!=='cancelled'&&o.payment!=='COD'?(o.paid?'<br><span class="pill delivered">Paid</span>':`<br><span class="pill pending">Unpaid</span> <button class="btn g s" data-mp="${o.id}">Mark paid</button>`):''}</td>
-   <td>${ctl&&o.status!=='cancelled'?`<select data-o="${o.id}">${['pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>`:`<span class="pill ${o.status}">${o.status}</span>`}</td><td style="white-space:nowrap">${invCell(o,ctl)}</td></tr>`).join('')}</tbody></table>`;
+   <td>${ctl&&o.status!=='cancelled'?`<select data-o="${o.id}">${['pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>`:`<span class="pill ${o.status}">${o.status}</span>${ctl&&o.status==='cancelled'&&D.me&&D.me.owner?`<br><button class="btn r s" data-del="${o.id}" style="margin-top:4px">Delete</button>`:''}`}</td><td style="white-space:nowrap">${invCell(o,ctl)}</td></tr>`).join('')}</tbody></table>`;
 }
 function ord(){
   const list=D.orders.filter(o=>oFilter==='all'||o.status===oFilter);
-  M(`<h2>Orders</h2><div class="bar"><select id="of">${['all','pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${oFilter===s?'selected':''}>${s}</option>`).join('')}</select><span class="mut">Cancelling an order puts its stock back automatically.</span></div><div class="panel">${ordTable(list)}</div>`);
+  M(`<h2>Orders</h2><div class="bar"><select id="of">${['all','pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${oFilter===s?'selected':''}>${s}</option>`).join('')}</select><span class="mut">Cancel / return karne par stock apne aap wapis add hota hai.</span></div><div class="panel">${ordTable(list)}</div>`);
   $('#of').onchange=e=>{oFilter=e.target.value;ord()};
   $('#main').onclick=async e=>{const w=e.target.closest('[data-wa]');if(w)return waOrder(D.orders.find(x=>x.id===w.dataset.wa));
     const dcb=e.target.closest('[data-dc]');if(dcb){const inp=document.querySelector(`[data-dci="${dcb.dataset.dc}"]`);if(!inp||inp.value==='')return toast('DC amount likhein (0 bhi likh sakte hain)',1);
       try{await api('admin/order/'+dcb.dataset.dc+'/dc','POST',{amount:+inp.value});toast('DC set — ab invoice/slip ban sakti hai');await load()}catch(x){toast(x.message,1)}return}
     const edc=e.target.closest('[data-edc]');if(edc){const o=D.orders.find(x=>x.id===edc.dataset.edc);const v=prompt('Delivery charges (Rs.)',o.delivery||0);if(v===null||v.trim()===''||isNaN(+v))return;
       try{await api('admin/order/'+o.id+'/dc','POST',{amount:+v});toast('DC updated');await load()}catch(x){toast(x.message,1)}return}
+    const dl=e.target.closest('[data-del]');if(dl)return delOrd(D.orders.find(x=>x.id===dl.dataset.del));
     const m=e.target.closest('[data-mp]');if(m){try{await api('admin/order/'+m.dataset.mp+'/paid','POST',{paid:true});toast('Marked as paid');await load()}catch(x){toast(x.message,1)}}};
   $('#main').onchange=async e=>{const s=e.target.closest('[data-o]');if(!s)return;
-    if(s.value==='cancelled'&&!confirm('Cancel this order and return stock?')){return ord()}
-    try{await api('admin/order/'+s.dataset.o,'POST',{status:s.value});toast('Updated');await load()}catch(x){toast(x.message,1)}};
+    let why='';if(s.value==='cancelled'){const w=prompt('Return / cancel ki wajah (optional). OK dabane par stock wapis add hoga.','');if(w===null)return ord();why=w}
+    try{await api('admin/order/'+s.dataset.o,'POST',{status:s.value,reason:why});toast('Updated');await load()}catch(x){toast(x.message,1)}};
 }
 
+function retForm(o){
+  $('#modal').innerHTML=`<h2>Return — ${esc(o.id)}</h2><p class="mut">Jo perfume wapis aaya uski quantity chunein. Wo stock me wapis add hoga aur invoice ka total apne aap kam ho jayega.</p>
+  <table><tbody>${o.lines.map((l,i)=>`<tr><td>${esc(l.name)} ${esc(l.size)}<br><span class="mut">${rs(l.unit)} × ${l.qty}</span></td><td style="width:110px"><select data-ri="${i}">${Array.from({length:l.qty+1},(_,n)=>`<option value="${n}">${n===0?'wapis nahi':n+' wapis'}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table>
+  <label>Wajah (optional)<input id="rr" placeholder="jaise: khushbu pasand nahi aayi"></label>
+  <div id="rsum" class="mut"></div>
+  <div class="bar" style="margin:0"><button class="btn" id="rgo">Return confirm</button><button class="btn g" id="rno">Back</button></div>`;
+  const upd=()=>{let amt=0;document.querySelectorAll('[data-ri]').forEach(s=>{amt+=o.lines[+s.dataset.ri].unit*+s.value});$('#rsum').innerHTML=amt?`Return value: <b>${rs(amt)}</b> (discount ke hisab se customer ko thoda kam bhi wapis ho sakta hai, final amount confirm ke baad dikhega)`:''};
+  document.querySelectorAll('[data-ri]').forEach(s=>s.onchange=upd);
+  $('#rno').onclick=()=>histOpen(o);
+  $('#rgo').onclick=async()=>{const items=[...document.querySelectorAll('[data-ri]')].map(s=>({i:+s.dataset.ri,qty:+s.value})).filter(x=>x.qty>0);
+    if(!items.length)return toast('Koi item select nahi kiya',1);
+    try{const r=await api('admin/order/'+o.id+'/return','POST',{items,reason:$('#rr').value});toast(r.cancelled?'Poora order return — cancelled':'Return ho gaya — naya total '+rs(r.total));$('#ov').classList.remove('on');await load()}catch(x){toast(x.message,1)}};
+}
+async function cancelOrd(o){
+  const why=prompt('Return / cancel ki wajah (optional, jaise "pasand nahi aaya"). Stock wapis add ho jayega.\nCancel karne ke liye OK dabayein.','');
+  if(why===null)return;
+  try{await api('admin/order/'+o.id,'POST',{status:'cancelled',reason:why});toast('Cancelled — stock wapis add ho gaya');$('#ov').classList.remove('on');await load()}catch(x){toast(x.message,1)}
+}
+async function delOrd(o){
+  if(!confirm('Invoice '+o.id+' hamesha ke liye delete karein?'+(o.status!=='cancelled'?' Stock bhi wapis add hoga.':'')+'\nIs ko wapis nahi laya ja sakta.'))return;
+  try{await api('admin/order/'+o.id,'DELETE');toast('Invoice delete ho gayi');$('#ov').classList.remove('on');await load()}catch(x){toast(x.message,1)}
+}
 // ---------- sales history / search ----------
 let H={q:'',src:'all',st:'all',pay:'all',paid:'all',from:'',to:'',view:'orders'};
 function histList(){
@@ -424,10 +447,12 @@ function histOpen(o){
   <table><tbody>${o.lines.map(l=>`<tr><td>${esc(l.name)} ${esc(l.size)} ×${l.qty}</td><td>${rs(l.total)}</td></tr>`).join('')}
   <tr><td class="mut">Subtotal</td><td>${rs(o.subtotal)}</td></tr>${o.discount?`<tr><td class="mut">Discount${o.coupon?' ('+esc(o.coupon)+')':''}</td><td>− ${rs(o.discount)}</td></tr>`:''}
   ${o.source!=='store'?`<tr><td class="mut">Delivery charges</td><td>${o.dcSet===false?'<span class="pill pending">not set</span>':rs(o.delivery)}</td></tr>`:''}
-  <tr><td><b>Total</b></td><td><b>${rs(o.total)}</b></td></tr><tr><td class="mut">Payment</td><td>${esc(o.payment)}${o.paymentRef?' · Txn '+esc(o.paymentRef):''} ${o.source==='store'||o.paid?'<span class="pill delivered">Paid</span>':'<span class="pill pending">Unpaid</span>'}</td></tr>
+  <tr><td><b>Total</b></td><td><b>${rs(o.total)}</b></td></tr>${(o.returns||[]).map(r=>`<tr><td class="mut">Return ${new Date(r.at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}: ${r.items.map(x=>esc(x.name)+' ×'+x.qty).join(', ')}${r.reason?' ('+esc(r.reason)+')':''}</td><td class="low">− ${rs(r.refund)}</td></tr>`).join('')}<tr><td class="mut">Payment</td><td>${esc(o.payment)}${o.paymentRef?' · Txn '+esc(o.paymentRef):''} ${o.source==='store'||o.paid?'<span class="pill delivered">Paid</span>':'<span class="pill pending">Unpaid</span>'}</td></tr>
   ${can('acc')?`<tr><td class="mut">Profit (cost nikal kar)</td><td>${rs(oRev(o)-cost)}</td></tr>`:''}</tbody></table>
-  <div class="bar" style="margin:0">${o.dcSet===false&&o.source!=='store'?'<span class="mut">Invoice ke liye pehle Orders tab mein DC set karein.</span>':`<a class="btn" style="text-decoration:none" target="_blank" href="${invUrl(o)}">Invoice</a><a class="btn g" style="text-decoration:none" target="_blank" href="${invUrl(o)}&slip=1">Slip</a><button class="btn g" id="hw">WhatsApp</button>`}<button class="btn g" id="hc">Close</button></div>`;
+  <div class="bar" style="margin:0">${o.dcSet===false&&o.source!=='store'?'<span class="mut">Invoice ke liye pehle Orders tab mein DC set karein.</span>':`<a class="btn" style="text-decoration:none" target="_blank" href="${invUrl(o)}">Invoice</a><a class="btn g" style="text-decoration:none" target="_blank" href="${invUrl(o)}&slip=1">Slip</a><button class="btn g" id="hw">WhatsApp</button>`}<button class="btn g" id="hc">Close</button></div>
+  ${can('ord')?`<div class="bar" style="margin:0;border-top:1px dashed var(--line);padding-top:12px">${o.status!=='cancelled'?'<button class="btn" id="hp">Return item(s)</button><button class="btn r" id="hx">Poora order cancel</button>':'<span class="mut">Cancelled'+(o.cancelReason?' — '+esc(o.cancelReason):'')+' (stock wapis ho chuka)</span>'}${D.me&&D.me.owner?'<button class="btn r" id="hd">Delete invoice</button>':''}</div>`:''}`;
   $('#ov').classList.add('on');
+  const hp=$('#hp');if(hp)hp.onclick=()=>retForm(o);const hx=$('#hx');if(hx)hx.onclick=()=>cancelOrd(o);const hd=$('#hd');if(hd)hd.onclick=()=>delOrd(o);
   $('#hc').onclick=()=>$('#ov').classList.remove('on');const w=$('#hw');if(w)w.onclick=()=>waOrder(o);
 }
 
