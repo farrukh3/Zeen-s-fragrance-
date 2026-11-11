@@ -331,7 +331,7 @@ module.exports = async (req, res) => {
         return send(200, { ok: true });
       }
 
-      if (method === 'POST' && b === 'order' && c) {
+      if (method === 'POST' && b === 'order' && c && !parts[3]) {
         need('ord');
         const body = await readBody(req);
         const status = str(body.status, 20);
@@ -346,8 +346,60 @@ module.exports = async (req, res) => {
           await db.set('products', products);
         }
         o.status = status;
+        if (status === 'cancelled') { o.cancelReason = str(body.reason, 200); o.cancelledAt = new Date().toISOString(); }
         if (status === 'delivered' && o.payment === 'COD') o.paid = true;
         await db.set('orders', orders);
+        return send(200, { ok: true });
+      }
+
+      // partial return: some items come back, stock goes back, totals are recalculated
+      if (method === 'POST' && b === 'order' && c && parts[3] === 'return') {
+        need('ord');
+        const body = await readBody(req);
+        const orders = await getOrders();
+        const o = orders.find((x) => x.id === c);
+        if (!o) return send(404, { error: 'Order nahi mila' });
+        if (o.status === 'cancelled') return send(400, { error: 'Order pehle se cancelled hai' });
+        const want = (Array.isArray(body.items) ? body.items : []).map((it) => ({ i: Math.round(+it.i), q: Math.round(+it.qty) })).filter((it) => o.lines[it.i] && it.q > 0);
+        if (!want.length) return send(400, { error: 'Koi item select nahi kiya' });
+        const back = [];
+        const newLines = o.lines.map((l, i) => {
+          const w = want.find((x) => x.i === i);
+          const r = w ? Math.min(w.q, l.qty) : 0;
+          if (r > 0) back.push({ ...l, qty: r, total: l.unit * r });
+          return r > 0 ? { ...l, qty: l.qty - r, total: l.unit * (l.qty - r) } : l;
+        }).filter((l) => l.qty > 0);
+        const products = await getProducts();
+        L.applyStock(products, back, +1);
+        await db.set('products', products);
+        const reason = str(body.reason, 200);
+        if (!newLines.length) {
+          o.status = 'cancelled'; o.cancelReason = reason || 'Poora return'; o.cancelledAt = new Date().toISOString();
+        } else {
+          const oldTotal = o.total, ratio = o.subtotal > 0 ? (o.discount || 0) / o.subtotal : 0;
+          const subtotal = newLines.reduce((a, l) => a + l.total, 0);
+          const discount = Math.round(subtotal * ratio);
+          o.returns = (o.returns || []).concat([{ at: new Date().toISOString(), reason, refund: 0, items: back.map((l) => ({ name: l.name, size: l.size, qty: l.qty, amount: l.total })) }]);
+          o.lines = newLines; o.subtotal = subtotal; o.discount = discount;
+          o.total = subtotal - discount + (o.delivery || 0);
+          o.returns[o.returns.length - 1].refund = oldTotal - o.total;
+        }
+        await db.set('orders', orders);
+        return send(200, { ok: true, total: o.total, cancelled: o.status === 'cancelled' });
+      }
+
+      // permanently delete an order/invoice (owner only); stock goes back if it was not already cancelled
+      if (method === 'DELETE' && b === 'order' && c) {
+        if (!au.owner) throw L.httpErr(403, 'Sirf owner invoice delete kar sakta hai');
+        const orders = await getOrders();
+        const o = orders.find((x) => x.id === c);
+        if (!o) return send(404, { error: 'Order nahi mila' });
+        if (o.status !== 'cancelled') {
+          const products = await getProducts();
+          L.applyStock(products, o.lines, +1);
+          await db.set('products', products);
+        }
+        await db.set('orders', orders.filter((x) => x.id !== c));
         return send(200, { ok: true });
       }
 
