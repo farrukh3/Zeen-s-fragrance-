@@ -221,6 +221,10 @@ footer a{color:var(--gold2)}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
 .proof{display:grid;gap:8px;margin-top:8px;border:1.5px dashed var(--gold);border-radius:12px;padding:12px;text-align:center;cursor:pointer;color:var(--gold)}.proof img{max-height:150px;max-width:100%;margin:0 auto;border-radius:8px;object-fit:contain}
+.srchbtn{margin-left:auto;width:40px;height:40px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;color:var(--gold2);flex:none}.srchbtn:hover{border-color:var(--gold)}.srchbtn svg{width:19px;height:19px}
+.sbar{display:none;border-top:1px solid var(--line);padding:8px 0}.sbar.on{display:block}.sbar .wrap{display:flex;gap:8px;align-items:center}.sbar input{border-radius:999px;padding:10px 16px}.sbar button{width:36px;height:36px;font-size:24px;color:var(--mute);flex:none}
+#shop{scroll-margin-top:120px}
+#toTop{position:fixed;right:16px;bottom:18px;z-index:16;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--gold2),var(--gold));color:#1b1608;display:grid;place-items:center;box-shadow:0 6px 20px #0006;opacity:0;pointer-events:none;transform:translateY(10px);transition:.2s}#toTop.on{opacity:1;pointer-events:auto;transform:none}#toTop svg{width:22px;height:22px}
 </style>
 </head>
 <body>
@@ -228,8 +232,11 @@ footer a{color:var(--gold2)}
 <header><div class="wrap nav">
   <a class="brand" href="#top" id="logo"><span id="logoMark"></span><span><b id="shopName">Zeen's Fragrance</b><small>Perfumes</small></span></a>
   <nav class="navlinks"><a href="#shop">Shop</a><a href="#offers">Offers</a><a href="#why">Why Us</a><a href="#contact">Contact</a></nav>
+  <button class="srchbtn" id="sBtn" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
   <button class="cartbtn" id="cartBtn" aria-label="Open cart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 016 0"/></svg>Cart<b id="cartN">0</b></button>
-</div></header>
+</div>
+<div class="sbar" id="sbar"><div class="wrap"><input id="hq" type="search" placeholder="Search perfume or note..." autocomplete="off" enterkeyhint="search"><button id="sx" aria-label="Close search">×</button></div></div></header>
+<button id="toTop" aria-label="Back to top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></button>
 
 <div class="hero" id="top"><div class="wrap hg">
   <div>
@@ -438,7 +445,13 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('[data-go]');if(t){cat=t.dataset.go;document.querySelectorAll('#cats .chip').forEach(x=>x.classList.toggle('on',x.dataset.c===cat));render();$('#shop').scrollIntoView({behavior:'smooth'});return}
   const ch=e.target.closest('[data-c]');if(ch){cat=ch.dataset.c;document.querySelectorAll('#cats .chip').forEach(x=>x.classList.toggle('on',x===ch));render()}
 });
-$('#q').oninput=()=>render(true);$('#sort').onchange=()=>render(true);
+$('#q').oninput=()=>{$('#hq').value=$('#q').value;render(true)};
+$('#sBtn').onclick=()=>{const b=$('#sbar');b.classList.toggle('on');if(b.classList.contains('on'))$('#hq').focus()};
+$('#sx').onclick=()=>{$('#sbar').classList.remove('on');$('#hq').value='';$('#q').value='';render(true)};
+let sT=0;$('#hq').oninput=e=>{$('#q').value=e.target.value;render(true);clearTimeout(sT);sT=setTimeout(()=>{if(e.target.value.trim())$('#shop').scrollIntoView({behavior:'smooth'})},500)};
+$('#hq').onkeydown=e=>{if(e.key==='Enter'){e.target.blur();$('#shop').scrollIntoView({behavior:'smooth'})}};
+addEventListener('scroll',()=>$('#toTop').classList.toggle('on',scrollY>700),{passive:true});
+$('#toTop').onclick=()=>scrollTo({top:0,behavior:'smooth'});$('#sort').onchange=()=>render(true);
 
 // ----- product modal -----
 let cur=null,sel=null,qty=1,gi=0;

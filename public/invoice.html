@@ -75,6 +75,7 @@ body.slip .terms,body.slip .foot{font-size:10px;color:#000}
   <button class="g" id="bA4">A4 Invoice</button>
   <button class="g" id="bSlip">Slip (80mm)</button>
   <button class="wa" id="bWa" style="display:none">Send on WhatsApp</button>
+  <button class="wa" id="bSaveWa" style="display:none;background:#128c7e">Image + customer chat</button>
   <button class="wa" id="bShare" style="display:none;background:#25d366">Share image (WhatsApp)</button>
 </div>
 <div id="root"></div>
@@ -139,15 +140,18 @@ function render(){
 function mode(slip){setTimeout(()=>{if(DATA)prepImg()},0);document.body.classList.toggle('slip',slip);$('#bSlip').classList.toggle('on',slip);$('#bA4').classList.toggle('on',!slip);
   $('#pg').textContent=slip?'@page{size:80mm auto;margin:2mm}':'@page{size:A4;margin:12mm}'}
 let IMG=null,imgTimer=0;
-function prepImg(){IMG=null;clearTimeout(imgTimer);const sb=$('#bShare');if(!window.html2canvas||!DATA||!sb)return;sb.style.display='';sb.textContent='Image ban rahi hai…';sb.disabled=true;
+function prepImg(){IMG=null;clearTimeout(imgTimer);const sb=$('#bShare');if(!window.html2canvas||!DATA||!sb)return;const sw=$('#bSaveWa');if(sw&&waNum(DATA.order.customer.phone).length>=11)sw.style.display='';sb.style.display='';sb.textContent='Image ban rahi hai…';sb.disabled=true;
   imgTimer=setTimeout(async()=>{const el=$('#root .paper');if(!el)return;
-    try{const c=await html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});
+    try{const c=await html2canvas(el,{scale:document.body.classList.contains('slip')?3:2,windowWidth:900,backgroundColor:'#ffffff',useCORS:true,logging:false});
       c.toBlob(b=>{IMG=b;sb.disabled=false;sb.textContent='Share image (WhatsApp)'},'image/png')}
     catch{sb.textContent='Share nahi ho saka';}},500)}
 $('#bShare').onclick=async()=>{if(!IMG)return;const f=new File([IMG],(DATA.order?DATA.order.id:'invoice')+'.png',{type:'image/png'});
   try{if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:'Invoice'});
     else{const a=document.createElement('a');a.href=URL.createObjectURL(IMG);a.download=f.name;a.click();alert('Is device par seedha share nahi ho sakta, image download ho gayi. WhatsApp me attach kar lein.')}}
   catch(e){if(e&&e.name!=='AbortError')alert('Share nahi ho saka: '+(e.message||e))}};
+$('#bSaveWa').onclick=()=>{if(!IMG)return alert('Image abhi ban rahi hai, 2 second ruk kar dobara dabayein');
+  const a=document.createElement('a');a.href=URL.createObjectURL(IMG);a.download=(DATA.order.id||'invoice')+'.png';a.click();
+  setTimeout(()=>{const n=waNum(DATA.order.customer.phone);if(n.length>=11&&n.length<=15)window.open('https://wa.me/'+n,'_blank');alert('Image save ho gayi. Chat me 📎 (attach) → Gallery se ye image bhej dein.')},500)};
 $('#bPrint').onclick=()=>window.print();$('#bA4').onclick=()=>mode(false);$('#bSlip').onclick=()=>mode(true);
 mode(q.get('slip')==='1');
 (async()=>{
