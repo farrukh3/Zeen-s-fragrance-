@@ -65,7 +65,8 @@ const getStaff = async () => (await db.get('staff')) || [];
 const getReviews = async () => (await db.get('reviews')) || [];
 const newToken = () => crypto.randomBytes(8).toString('hex');
 
-async function readBody(req) {
+async function readBody(req, max = 300000) {
+  if (+req.headers['content-length'] > max) throw L.httpErr(413, 'Data bohat bara hai');
   if (req.body !== undefined && req.body !== null && req.body !== '') {
     return typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
   }
@@ -74,6 +75,13 @@ async function readBody(req) {
   const raw = Buffer.concat(chunks).toString();
   return raw ? JSON.parse(raw) : {};
 }
+
+// ---------- abuse protection ----------
+const clientIp = (req) => String(req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || (req.socket && req.socket.remoteAddress) || 'x').split(',')[0].trim().slice(0, 60);
+async function limited(req, name, max, windowSec, extra = '') {
+  try { return (await db.hit(`rl:${name}:${clientIp(req)}${extra}`, windowSec)) > max; } catch { return false; }
+}
+const TOO_MANY = { error: 'Bohat zyada koshishein. Thori der baad dobara try karein.' };
 
 function str(v, n) { return String(v == null ? '' : v).trim().slice(0, n); }
 
@@ -118,6 +126,7 @@ module.exports = async (req, res) => {
     }
 
     if (method === 'POST' && a === 'coupon') {
+      if (await limited(req, 'coupon', 40, 600)) return send(429, TOO_MANY);
       const body = await readBody(req);
       const code = str(body.code, 30).toUpperCase();
       const sub = L.num(body.subtotal);
@@ -129,7 +138,8 @@ module.exports = async (req, res) => {
     }
 
     if (method === 'POST' && a === 'order') {
-      const body = await readBody(req);
+      if (await limited(req, 'order', 20, 3600)) return send(429, TOO_MANY);
+      const body = await readBody(req, 1300000);
       const cu = body.customer || {};
       const customer = { name: str(cu.name, 80), phone: str(cu.phone, 20), city: str(cu.city, 50), address: str(cu.address, 300), note: str(cu.note, 300) };
       if (!customer.name || !customer.phone || !customer.address || !customer.city)
@@ -141,19 +151,35 @@ module.exports = async (req, res) => {
       const pcfg = settings.payments[pm];
       if (!PAYL[pm] || !pcfg || (pm === 'cod' ? pcfg.enabled === false : !(pcfg.enabled && pcfg.number)))
         return send(400, { error: 'Yeh payment method abhi available nahi hai' });
+      // online payment needs a transaction ID and a screenshot
+      let ref = '', proof = '';
+      if (pm !== 'cod') {
+        ref = str(body.payment && body.payment.ref, 60).replace(/\s+/g, ' ');
+        proof = String((body.payment && body.payment.proof) || '');
+        if (ref.length < 4) return send(400, { error: 'Transaction ID likhna zaroori hai (kam az kam 4 huroof)' });
+        if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(proof)) return send(400, { error: 'Payment ka screenshot lagana zaroori hai (JPG/PNG)' });
+        if (proof.length > 1100000) return send(400, { error: 'Screenshot bohat bara hai, chhota screenshot lagayein' });
+        const oldOrders = await getOrders();
+        const refKey = ref.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (oldOrders.some((o) => o.status !== 'cancelled' && o.paymentRef && o.paymentRef.toLowerCase().replace(/[^a-z0-9]/g, '') === refKey))
+          return send(400, { error: 'Yeh Transaction ID pehle kisi order mein use ho chuki hai. Sahi ID likhein.' });
+      }
       const lines = L.buildLines(body.items, products, settings, { onlyActive: true });
+      if (lines.reduce((a, l) => a + l.qty, 0) > 30) return send(400, { error: 'Itne zyada perfume ke liye humein WhatsApp par message karein' });
+      if (await limited(req, 'orderph', 4, 3600, ':' + customer.phone.replace(/\D/g, ''))) return send(429, TOO_MANY);
       const coupon = coupons.find((x) => x.code === str(body.coupon, 30).toUpperCase());
       const t = L.totals(lines, settings, coupon);
       L.applyStock(products, lines, -1);
       const { no, id } = await nextOrderId();
       const order = {
         id, no, token: newToken(), createdAt: new Date().toISOString(), source: 'online', status: 'pending', payment: PAYL[pm],
-        paymentRef: pm === 'cod' ? '' : str(body.payment.ref, 60), paid: false,
+        paymentRef: ref, proof: !!proof, paid: false,
         deliveryNote: settings.deliveryMode === 'fixed' ? '' : settings.deliveryNote,
         dcSet: settings.deliveryMode === 'fixed',
         customer, lines, ...t, coupon: coupon && t.discount ? coupon.code : '',
       };
       await db.set('products', products);
+      if (proof) await db.set('pay:' + id, proof);
       const orders = await getOrders();
       orders.unshift(order);
       await db.set('orders', orders);
@@ -162,6 +188,7 @@ module.exports = async (req, res) => {
 
     // customer writes a review (waits for admin approval)
     if (method === 'POST' && a === 'review') {
+      if (await limited(req, 'review', 10, 3600)) return send(429, TOO_MANY);
       const body = await readBody(req);
       if (body.website) return send(200, { ok: true }); // honeypot
       const name = str(body.name, 60), text = str(body.text, 400), rating = L.clamp(Math.round(L.num(body.rating, 5)), 1, 5);
@@ -176,6 +203,7 @@ module.exports = async (req, res) => {
 
     // customer asks for an out-of-stock perfume
     if (method === 'POST' && a === 'request') {
+      if (await limited(req, 'request', 10, 3600)) return send(429, TOO_MANY);
       const body = await readBody(req);
       const name = str(body.name, 80), phone = str(body.phone, 20);
       if (!name || !/^[+\d][\d\s-]{6,18}$/.test(phone)) return send(400, { error: 'Naam aur sahi phone number likhein' });
@@ -196,6 +224,7 @@ module.exports = async (req, res) => {
 
     // public invoice (needs the secret token from the invoice link, or admin login)
     if (method === 'GET' && a === 'invoice' && b) {
+      if (await limited(req, 'invoice', 80, 600)) return send(429, TOO_MANY);
       const o = (await getOrders()).find((x) => x.id === b);
       const t = url.searchParams.get('t') || '';
       const au = await getAuth(req);
@@ -210,9 +239,11 @@ module.exports = async (req, res) => {
 
     // ===== admin login =====
     if (a === 'admin' && b === 'login' && method === 'POST') {
+      if (await limited(req, 'login', 10, 600)) { await sleep(800); return send(429, { error: 'Bohat zyada galat koshishein. 10 minute baad try karein.' }); }
       const body = await readBody(req);
       if (!PASSWORD()) return send(500, { error: 'ADMIN_PASSWORD Vercel environment variables mein set nahi hai' });
       const uname = str(body.username, 30).toLowerCase();
+      if (await limited(req, 'loginu', 30, 3600, ':' + (uname || 'owner'))) { await sleep(800); return send(429, { error: 'Is account par bohat koshishein hui hain. Thori der baad try karein.' }); }
       let uid = null;
       if (!uname || uname === 'admin') {
         const x = crypto.createHash('sha256').update(String(body.password || '')).digest();
@@ -255,9 +286,21 @@ module.exports = async (req, res) => {
         });
       }
 
+      // payment screenshot (private: only logged-in admins/staff with order access)
+      if (method === 'GET' && b === 'proof' && c) {
+        need('ord');
+        const d = await db.get('pay:' + c);
+        const m = d && /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(d);
+        if (!m) { res.statusCode = 404; return res.end('Not found'); }
+        res.statusCode = 200;
+        res.setHeader('Content-Type', m[1]);
+        res.setHeader('Cache-Control', 'private, no-store');
+        return res.end(Buffer.from(m[2], 'base64'));
+      }
+
       if (method === 'POST' && b === 'image') {
         if (!au.perms.has('prod') && !au.perms.has('set')) need('prod');
-        const body = await readBody(req);
+        const body = await readBody(req, 1300000);
         const d = String(body.dataUrl || '');
         if (!/^data:image\/(jpeg|png|webp);base64,/.test(d)) return send(400, { error: 'Sirf JPG/PNG/WEBP image' });
         if (d.length > 900000) return send(400, { error: 'Image bohat bari hai' });
@@ -400,6 +443,7 @@ module.exports = async (req, res) => {
           await db.set('products', products);
         }
         await db.set('orders', orders.filter((x) => x.id !== c));
+        await db.del('pay:' + c);
         return send(200, { ok: true });
       }
 
@@ -574,6 +618,6 @@ module.exports = async (req, res) => {
   } catch (e) {
     if (e instanceof SyntaxError) return send(400, { error: 'Bad request' });
     if (!e.status) console.error(e);
-    return send(e.status || 500, { error: e.status ? e.message : 'Server error: ' + e.message });
+    return send(e.status || 500, { error: e.status ? e.message : 'Server mein masla aaya, dobara try karein' });
   }
 };
