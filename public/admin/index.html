@@ -121,6 +121,8 @@ input[type=checkbox],input[type=radio]{accent-color:var(--gold)}
  @keyframes sheet{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
  .toast{bottom:92px}
 }
+.modal table{min-width:0}.modal td,.modal th{word-break:break-word}
+@media(max-width:900px){.modal{gap:10px}.modal input,.modal textarea,.modal select{padding:9px 12px}.modal label{gap:4px}.modal h2{font-size:19px;margin-bottom:0}.modal td select{padding:8px 28px 8px 10px}}
 @media(max-width:380px){.cards{grid-template-columns:1fr}}
 @media print{.side,.mtop,.bar,.btn{display:none!important}.shell{display:block}main{padding:0}}
 
@@ -343,7 +345,7 @@ function ordTable(list,ctl=true){
    <td>${new Date(o.createdAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
    <td>${esc(o.customer.name)}<br><span class="mut">${esc(o.customer.phone)}</span>${o.customer.address?`<br><span class="mut">${esc(o.customer.address)}, ${esc(o.customer.city)}</span>`:''}${o.customer.note?`<br><i class="mut">${esc(o.customer.note)}</i>`:''}</td>
    <td>${o.lines.map(l=>`${esc(l.name)} ${esc(l.size)} ×${l.qty}`).join('<br>')}</td>
-   <td>${rs(o.total)}<br><span class="mut">${esc(o.payment)}${o.coupon?' · '+esc(o.coupon):''}${o.paymentRef?'<br>Txn: '+esc(o.paymentRef):''}</span>${o.source!=='store'&&o.status!=='cancelled'&&o.payment!=='COD'?(o.paid?'<br><span class="pill delivered">Paid</span>':`<br><span class="pill pending">Unpaid</span> <button class="btn g s" data-mp="${o.id}">Mark paid</button>`):''}</td>
+   <td>${rs(o.total)}<br><span class="mut">${esc(o.payment)}${o.coupon?' · '+esc(o.coupon):''}${o.paymentRef?'<br>Txn: '+esc(o.paymentRef):''}</span>${o.proof?`<br><button class="btn g s" data-proof="${esc(o.id)}">View proof</button>`:(o.source!=='store'&&o.payment!=='COD'?'<br><span class="low">No proof</span>':'')}${o.source!=='store'&&o.status!=='cancelled'&&o.payment!=='COD'?(o.paid?'<br><span class="pill delivered">Paid</span>':`<br><span class="pill pending">Unpaid</span> <button class="btn g s" data-mp="${o.id}">Mark paid</button>`):''}</td>
    <td>${ctl&&o.status!=='cancelled'?`<select data-o="${o.id}">${['pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>`:`<span class="pill ${o.status}">${o.status}</span>${ctl&&o.status==='cancelled'&&D.me&&D.me.owner?`<br><button class="btn r s" data-del="${o.id}" style="margin-top:4px">Delete</button>`:''}`}</td><td style="white-space:nowrap">${invCell(o,ctl)}</td></tr>`).join('')}</tbody></table>`;
 }
 function ord(){
@@ -356,15 +358,26 @@ function ord(){
     const edc=e.target.closest('[data-edc]');if(edc){const o=D.orders.find(x=>x.id===edc.dataset.edc);const v=prompt('Delivery charges (Rs.)',o.delivery||0);if(v===null||v.trim()===''||isNaN(+v))return;
       try{await api('admin/order/'+o.id+'/dc','POST',{amount:+v});toast('DC updated');await load()}catch(x){toast(x.message,1)}return}
     const dl=e.target.closest('[data-del]');if(dl)return delOrd(D.orders.find(x=>x.id===dl.dataset.del));
+    const pf=e.target.closest('[data-proof]');if(pf)return showProof(D.orders.find(x=>x.id===pf.dataset.proof));
     const m=e.target.closest('[data-mp]');if(m){try{await api('admin/order/'+m.dataset.mp+'/paid','POST',{paid:true});toast('Marked as paid');await load()}catch(x){toast(x.message,1)}}};
   $('#main').onchange=async e=>{const s=e.target.closest('[data-o]');if(!s)return;
     let why='';if(s.value==='cancelled'){const w=prompt('Return / cancel ki wajah (optional). OK dabane par stock wapis add hoga.','');if(w===null)return ord();why=w}
     try{await api('admin/order/'+s.dataset.o,'POST',{status:s.value,reason:why});toast('Updated');await load()}catch(x){toast(x.message,1)}};
 }
 
+function showProof(o){
+  $('#modal').innerHTML=`<h2>Payment proof — ${esc(o.id)}</h2>
+  <div class="mut">${esc(o.payment)} · ${rs(o.total)} · Customer: ${esc(o.customer.name)}</div>
+  <div><b>Transaction ID:</b> <span style="user-select:all">${esc(o.paymentRef||'—')}</span></div>
+  <a href="/api/admin/proof/${encodeURIComponent(o.id)}" target="_blank" rel="noopener"><img src="/api/admin/proof/${encodeURIComponent(o.id)}" alt="Payment screenshot" style="max-width:100%;max-height:60vh;border-radius:12px;border:1px solid var(--line);display:block;margin:0 auto;background:#f6efdc"></a>
+  <p class="mut">Apne account me paise aur TID mila lein, phir Mark paid dabayein.</p>
+  <div class="bar" style="margin:0">${!o.paid&&o.status!=='cancelled'?'<button class="btn" id="pfpaid">Paise mil gaye — Mark paid</button>':'<span class="pill delivered">Paid</span>'}<button class="btn g" id="pfx">Close</button></div>`;
+  $('#ov').classList.add('on');$('#pfx').onclick=()=>$('#ov').classList.remove('on');
+  const pp=$('#pfpaid');if(pp)pp.onclick=async()=>{try{await api('admin/order/'+o.id+'/paid','POST',{paid:true});toast('Marked as paid');$('#ov').classList.remove('on');await load()}catch(x){toast(x.message,1)}};
+}
 function retForm(o){
   $('#modal').innerHTML=`<h2>Return — ${esc(o.id)}</h2><p class="mut">Jo perfume wapis aaya uski quantity chunein. Wo stock me wapis add hoga aur invoice ka total apne aap kam ho jayega.</p>
-  <table><tbody>${o.lines.map((l,i)=>`<tr><td>${esc(l.name)} ${esc(l.size)}<br><span class="mut">${rs(l.unit)} × ${l.qty}</span></td><td style="width:110px"><select data-ri="${i}">${Array.from({length:l.qty+1},(_,n)=>`<option value="${n}">${n===0?'wapis nahi':n+' wapis'}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table>
+  <table><tbody>${o.lines.map((l,i)=>`<tr><td>${esc(l.name)} ${esc(l.size)}<br><span class="mut">${rs(l.unit)} × ${l.qty}</span></td><td style="width:120px"><select data-ri="${i}">${Array.from({length:l.qty+1},(_,n)=>`<option value="${n}">${n===0?'Nahi':n+' wapis'}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table>
   <label>Wajah (optional)<input id="rr" placeholder="jaise: khushbu pasand nahi aayi"></label>
   <div id="rsum" class="mut"></div>
   <div class="bar" style="margin:0"><button class="btn" id="rgo">Return confirm</button><button class="btn g" id="rno">Back</button></div>`;
@@ -450,9 +463,9 @@ function histOpen(o){
   <tr><td><b>Total</b></td><td><b>${rs(o.total)}</b></td></tr>${(o.returns||[]).map(r=>`<tr><td class="mut">Return ${new Date(r.at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}: ${r.items.map(x=>esc(x.name)+' ×'+x.qty).join(', ')}${r.reason?' ('+esc(r.reason)+')':''}</td><td class="low">− ${rs(r.refund)}</td></tr>`).join('')}<tr><td class="mut">Payment</td><td>${esc(o.payment)}${o.paymentRef?' · Txn '+esc(o.paymentRef):''} ${o.source==='store'||o.paid?'<span class="pill delivered">Paid</span>':'<span class="pill pending">Unpaid</span>'}</td></tr>
   ${can('acc')?`<tr><td class="mut">Profit (cost nikal kar)</td><td>${rs(oRev(o)-cost)}</td></tr>`:''}</tbody></table>
   <div class="bar" style="margin:0">${o.dcSet===false&&o.source!=='store'?'<span class="mut">Invoice ke liye pehle Orders tab mein DC set karein.</span>':`<a class="btn" style="text-decoration:none" target="_blank" href="${invUrl(o)}">Invoice</a><a class="btn g" style="text-decoration:none" target="_blank" href="${invUrl(o)}&slip=1">Slip</a><button class="btn g" id="hw">WhatsApp</button>`}<button class="btn g" id="hc">Close</button></div>
-  ${can('ord')?`<div class="bar" style="margin:0;border-top:1px dashed var(--line);padding-top:12px">${o.status!=='cancelled'?'<button class="btn" id="hp">Return item(s)</button><button class="btn r" id="hx">Poora order cancel</button>':'<span class="mut">Cancelled'+(o.cancelReason?' — '+esc(o.cancelReason):'')+' (stock wapis ho chuka)</span>'}${D.me&&D.me.owner?'<button class="btn r" id="hd">Delete invoice</button>':''}</div>`:''}`;
+  ${can('ord')?`<div class="bar" style="margin:0;border-top:1px dashed var(--line);padding-top:12px">${o.proof?'<button class="btn g" id="hpf">Payment proof</button>':''}${o.status!=='cancelled'?'<button class="btn" id="hp">Return item(s)</button><button class="btn r" id="hx">Poora order cancel</button>':'<span class="mut">Cancelled'+(o.cancelReason?' — '+esc(o.cancelReason):'')+' (stock wapis ho chuka)</span>'}${D.me&&D.me.owner?'<button class="btn r" id="hd">Delete invoice</button>':''}</div>`:''}`;
   $('#ov').classList.add('on');
-  const hp=$('#hp');if(hp)hp.onclick=()=>retForm(o);const hx=$('#hx');if(hx)hx.onclick=()=>cancelOrd(o);const hd=$('#hd');if(hd)hd.onclick=()=>delOrd(o);
+  const hpf=$('#hpf');if(hpf)hpf.onclick=()=>showProof(o);const hp=$('#hp');if(hp)hp.onclick=()=>retForm(o);const hx=$('#hx');if(hx)hx.onclick=()=>cancelOrd(o);const hd=$('#hd');if(hd)hd.onclick=()=>delOrd(o);
   $('#hc').onclick=()=>$('#ov').classList.remove('on');const w=$('#hw');if(w)w.onclick=()=>waOrder(o);
 }
 
