@@ -27,12 +27,25 @@ function cookie(req, name) {
 }
 const PERMS = ['dash', 'sell', 'prod', 'ord', 'req', 'hist', 'rev', 'acc', 'off', 'set'];
 // owner (ADMIN_PASSWORD) can do everything; staff accounts only what the owner ticked
+const getOwner = async () => (await db.get('owner')) || null;
+const verOf = (h) => crypto.createHash('sha256').update('v|' + h).digest('hex').slice(0, 10);
+const ownerVer = (rec) => verOf(rec ? rec.hash : 'env');
+async function ownerOk(pw) {
+  const rec = await getOwner();
+  const x = crypto.createHash('sha256').update(String(pw || '')).digest();
+  // ADMIN_PASSWORD from Vercel always works as the emergency/recovery password
+  if (crypto.timingSafeEqual(x, crypto.createHash('sha256').update(PASSWORD()).digest())) return true;
+  return !!(rec && pwOk(rec, pw || ''));
+}
 async function getAuth(req) {
   const p = verify(cookie(req, 'zt'));
   if (!p) return null;
-  if (!p.u || p.u === 'owner') return { owner: true, name: 'Owner', perms: new Set(PERMS) };
+  if (!p.u || p.u === 'owner') {
+    if (p.v !== ownerVer(await getOwner())) return null;
+    return { owner: true, name: 'Owner', perms: new Set(PERMS) };
+  }
   const st = (await getStaff()).find((x) => x.id === p.u && x.active);
-  if (!st) return null;
+  if (!st || p.v !== verOf(st.hash)) return null;
   return { owner: false, id: st.id, name: st.name, perms: new Set((st.perms || []).filter((x) => PERMS.includes(x))) };
 }
 const hashPw = (pw, salt) => crypto.scryptSync(String(pw), salt, 32).toString('hex');
@@ -246,16 +259,15 @@ module.exports = async (req, res) => {
       if (await limited(req, 'loginu', 30, 3600, ':' + (uname || 'owner'))) { await sleep(800); return send(429, { error: 'Is account par bohat koshishein hui hain. Thori der baad try karein.' }); }
       let uid = null;
       if (!uname || uname === 'admin') {
-        const x = crypto.createHash('sha256').update(String(body.password || '')).digest();
-        const y = crypto.createHash('sha256').update(PASSWORD()).digest();
-        if (crypto.timingSafeEqual(x, y)) uid = 'owner';
+        if (await ownerOk(body.password)) uid = 'owner';
       } else {
         const st = (await getStaff()).find((z) => z.username === uname && z.active);
         if (st && pwOk(st, body.password || '')) uid = st.id;
       }
       if (!uid) { await sleep(800); return send(401, { error: 'Username ya password galat hai' }); }
       const secure = (req.headers['x-forwarded-proto'] || '').includes('https') ? '; Secure' : '';
-      const tok = sign({ exp: Date.now() + 7 * 864e5, u: uid });
+      const ver = uid === 'owner' ? ownerVer(await getOwner()) : verOf((await getStaff()).find((z) => z.id === uid).hash);
+      const tok = sign({ exp: Date.now() + 7 * 864e5, u: uid, v: ver });
       return send(200, { ok: true }, { 'Set-Cookie': `zt=${tok}; HttpOnly; Path=/; SameSite=Strict; Max-Age=604800${secure}` });
     }
     if (a === 'admin' && b === 'logout') {
@@ -586,6 +598,33 @@ module.exports = async (req, res) => {
           return send(200, { ok: true });
         }
         if (method === 'DELETE' && c) { await db.set('reviews', list.filter((x) => x.id !== c)); return send(200, { ok: true }); }
+      }
+
+      // ----- change my own password (owner or staff) -----
+      if (method === 'POST' && b === 'password') {
+        if (await limited(req, 'pwchg', 10, 600)) return send(429, TOO_MANY);
+        const body = await readBody(req);
+        const cur = String(body.current || ''), next = String(body.next || '');
+        if (next.length < (au.owner ? 8 : 6)) return send(400, { error: 'Naya password kam az kam ' + (au.owner ? 8 : 6) + ' huroof ka ho' });
+        if (next === cur) return send(400, { error: 'Naya password purane se alag ho' });
+        const secure = (req.headers['x-forwarded-proto'] || '').includes('https') ? '; Secure' : '';
+        let ver, uid;
+        if (au.owner) {
+          if (!(await ownerOk(cur))) { await sleep(800); return send(400, { error: 'Maujooda password galat hai' }); }
+          const salt = crypto.randomBytes(12).toString('hex');
+          const rec = { salt, hash: hashPw(next, salt), changedAt: new Date().toISOString() };
+          await db.set('owner', rec);
+          ver = ownerVer(rec); uid = 'owner';
+        } else {
+          const list = await getStaff();
+          const st = list.find((x) => x.id === au.id);
+          if (!st || !pwOk(st, cur)) { await sleep(800); return send(400, { error: 'Maujooda password galat hai' }); }
+          st.salt = crypto.randomBytes(12).toString('hex'); st.hash = hashPw(next, st.salt);
+          await db.set('staff', list);
+          ver = verOf(st.hash); uid = st.id;
+        }
+        const tok = sign({ exp: Date.now() + 7 * 864e5, u: uid, v: ver });
+        return send(200, { ok: true }, { 'Set-Cookie': `zt=${tok}; HttpOnly; Path=/; SameSite=Strict; Max-Age=604800${secure}` });
       }
 
       // ----- staff accounts (owner only) -----
