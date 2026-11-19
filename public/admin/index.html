@@ -170,9 +170,9 @@ function draw(){
   const logo=D.settings.logo?`<img src="/api/img/${D.settings.logo}" alt="">`:`<span class="lg0">Z</span>`;
   const brand=`<div class="brand">${logo}<div><b>Zeen's Admin</b><small>${D.me&&!D.me.owner?esc(D.me.name):'Owner'}</small></div></div>`;
   $('#app').innerHTML=`<div class="shell"><aside class="side">${brand}<nav class="tabs">${vis.map(([k,v])=>`<button class="tab ${k===tab?'on':''}" data-t="${k}"><svg viewBox="0 0 24 24">${IC[k]||''}</svg><span>${v.replace(' (In-Store)','')}</span>${badge[k]?`<i class="bd">${badge[k]}</i>`:''}</button>`).join('')}</nav>
-  <div class="sidefoot"><a class="btn g s" href="/" target="_blank">View Shop</a><button class="btn g s" id="lo">Logout</button></div></aside>
-  <div class="content"><div class="mtop">${brand}<a class="btn g s" href="/" target="_blank" style="text-decoration:none">Shop</a><button class="btn g s" id="lo2">Logout</button></div><main id="main"></main></div></div>`;
-  document.querySelectorAll('#lo,#lo2').forEach(b=>b.onclick=async()=>{await api('admin/logout','POST');D=null;showLogin()});
+  <div class="sidefoot"><a class="btn g s" href="/" target="_blank">View Shop</a><button class="btn g s" id="pw">🔑 Password badlein</button><button class="btn g s" id="lo">Logout</button></div></aside>
+  <div class="content"><div class="mtop">${brand}<a class="btn g s" href="/" target="_blank" style="text-decoration:none">Shop</a><button class="btn g s" id="pw2" aria-label="Change password">🔑</button><button class="btn g s" id="lo2">Logout</button></div><main id="main"></main></div></div>`;
+  document.querySelectorAll('#pw,#pw2').forEach(b=>b.onclick=pwForm);document.querySelectorAll('#lo,#lo2').forEach(b=>b.onclick=async()=>{await api('admin/logout','POST');D=null;showLogin()});
   document.querySelectorAll('.tab').forEach(b=>b.onclick=async()=>{tab=b.dataset.t;await load()});
   ({dash,sell,prod,ord,req,hist,rev,acc,off,set,staff}[tab])();
 }
@@ -365,6 +365,17 @@ function ord(){
     try{await api('admin/order/'+s.dataset.o,'POST',{status:s.value,reason:why});toast('Updated');await load()}catch(x){toast(x.message,1)}};
 }
 
+function pwForm(){
+  $('#modal').innerHTML=`<h2>Password badlein</h2><p class="mut">${D.me&&D.me.owner?'Owner ka password (kam az kam 8 huroof).':'Aapka apna password (kam az kam 6 huroof).'} Badalne ke baad doosre phone/computer par purana login khud band ho jata hai.</p>
+  <label>Maujooda password<input id="pw0" type="password" autocomplete="current-password"></label>
+  <label>Naya password<input id="pw1" type="password" autocomplete="new-password"></label>
+  <label>Naya password dobara<input id="pw2i" type="password" autocomplete="new-password"></label>
+  <div class="er" id="pwe"></div>
+  <div class="bar" style="margin:0"><button class="btn" id="pwgo">Password badlein</button><button class="btn g" id="pwx">Cancel</button></div>`;
+  $('#ov').classList.add('on');$('#pwx').onclick=()=>$('#ov').classList.remove('on');
+  $('#pwgo').onclick=async()=>{const n=$('#pw1').value;if(n!==$('#pw2i').value){$('#pwe').textContent='Dono naye password ek jaise nahi hain';return}
+    try{await api('admin/password','POST',{current:$('#pw0').value,next:n});$('#ov').classList.remove('on');toast('Password badal gaya')}catch(x){$('#pwe').textContent=x.message}};
+}
 function showProof(o){
   $('#modal').innerHTML=`<h2>Payment proof — ${esc(o.id)}</h2>
   <div class="mut">${esc(o.payment)} · ${rs(o.total)} · Customer: ${esc(o.customer.name)}</div>
