@@ -302,7 +302,7 @@ module.exports = async (req, res) => {
           log.unshift({ at, by: au.name, pid: p.id, pname: p.name, size: v.size, delta: c.delta, after: v.stock, reason });
         }
         await db.set('products', products);
-        await db.set('stocklog', log.slice(0, 300));
+        await db.set('stocklog', log.slice(0, 1000));
         return send(200, { ok: true });
       }
 
@@ -317,7 +317,7 @@ module.exports = async (req, res) => {
           products = products.map((p) => ({ ...p, variants: p.variants.map(({ cost, ...v }) => v) }));
           orders = orders.map(L.stripCost);
         }
-        const stocklog = au.perms.has('prod') ? ((await db.get('stocklog')) || []).slice(0, 120) : [];
+        const stocklog = au.perms.has('prod') ? ((await db.get('stocklog')) || []).slice(0, 600) : [];
         return send(200, {
           stocklog, settings, products, orders, coupons, expenses: seeCost ? expenses0 : [], requests, reviews: au.perms.has('rev') ? reviews : [],
           staff: au.owner ? staff.map(({ salt, hash, ...x }) => x) : [],
@@ -361,6 +361,11 @@ module.exports = async (req, res) => {
           products[i] = np;
         } else products.unshift(np);
         await db.set('products', products);
+        // record stock changes made through the product form / bulk add
+        const ents = [], at = new Date().toISOString();
+        if (old) for (const v of np.variants) { const ov = old.variants.find((x) => x.size === v.size); const d = v.stock - (ov ? ov.stock : 0); if (d) ents.push({ at, by: au.name, pid: np.id, pname: np.name, size: v.size, delta: d, after: v.stock, reason: ov ? 'Product edit se badla' : 'Naya size add kiya' }); }
+        else for (const v of np.variants) if (v.stock > 0) ents.push({ at, by: au.name, pid: np.id, pname: np.name, size: v.size, delta: v.stock, after: v.stock, reason: 'Naya product (opening stock)' });
+        if (ents.length) await db.set('stocklog', ents.reverse().concat((await db.get('stocklog')) || []).slice(0, 1000));
         return send(200, { ok: true, product: np });
       }
 
