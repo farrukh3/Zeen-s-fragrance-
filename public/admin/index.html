@@ -99,6 +99,22 @@ input[type=checkbox],input[type=radio]{accent-color:var(--gold)}
 .ht{height:8px;border-radius:99px;background:var(--bg);overflow:hidden;margin-top:3px}.ht i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:99px}
 .lg{font-size:12px;color:var(--mute);margin:-4px 0 4px}.lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin:0 4px 0 10px;vertical-align:middle}.lg i:first-child{margin-left:0}
 ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px}::-webkit-scrollbar-track{background:transparent}
+.ol{display:grid;gap:10px}
+.oc{display:grid;grid-template-columns:1fr auto;gap:3px 12px;padding:13px 15px;border:1px solid var(--line);border-radius:14px;background:#fff;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .1s}
+.oc:hover,.oc:focus-visible{border-color:var(--gold);box-shadow:var(--sh);outline:0}.oc:active{transform:scale(.99)}
+.oc .oa{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.oc .or{text-align:right;font-size:13px;align-self:center}.oc .or b{font-size:16px;color:var(--gold)}.oc .ob{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.oc .of2{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.oh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.sec{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:rgba(255,255,255,.7);display:grid;gap:4px}
+.st{font-size:11.5px;text-transform:uppercase;letter-spacing:1.1px;color:var(--mute);font-weight:700;margin-bottom:2px}
+.lk{color:var(--gold);font-weight:600;text-decoration:none}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}
+.pcard{display:grid;grid-template-columns:64px 1fr;gap:12px;padding:12px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:var(--sh)}
+.pcard .thumb{width:64px;height:84px;border-radius:12px}.pi{min-width:0}.pn{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pv{display:grid;gap:4px;margin-top:6px}.pv>div{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.stp{display:grid;grid-template-columns:1fr 1fr 1.1fr 1fr 1fr;gap:6px;align-items:center;margin-top:8px}.stp .btn{padding:10px 0;text-align:center;font-size:15px}
+.sv{text-align:center;font-size:22px;font-weight:700}.sv.up{color:var(--green)}.sv.dn{color:var(--red)}
+.lrow{display:flex;justify-content:space-between;gap:10px;font-size:13px;flex-wrap:wrap;padding:3px 0;border-bottom:1px dashed var(--line)}.grn2{color:var(--green)}
 .greet{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .ph2{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
 .chips{display:flex;gap:6px}.chip{border:1px solid var(--line);border-radius:99px;padding:5px 13px;font-size:13px;color:var(--mute);background:#fff}.chip.on{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#1b1608;border-color:transparent;font-weight:600}
@@ -106,7 +122,15 @@ input[type=checkbox],input[type=radio]{accent-color:var(--gold)}
 .tip{position:absolute;top:0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 11px;font-size:12.5px;box-shadow:var(--sh);pointer-events:none;width:150px;z-index:2}
 .tgl{margin-top:12px}.tblw{margin-top:10px;max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:12px}.tblw table{min-width:0}
 .hb2{margin-bottom:12px}.hl2{display:flex;justify-content:space-between;gap:8px;margin-bottom:4px;font-size:13.5px}.hb2 .ht{height:10px}
+.rt{}
 @media(max-width:900px){
+ .panel table{min-width:0}.panel td,.panel th{white-space:normal!important}
+ table.rt,table.rt tbody,table.rt tr,table.rt td{display:block;width:100%}table.rt thead{display:none}
+ table.rt tr{border:1px solid var(--line);border-radius:14px;padding:8px 12px;margin-bottom:10px;background:#fff}
+ table.rt td{border:0;padding:5px 0;display:flex;justify-content:space-between;gap:12px;text-align:right;align-items:flex-start;word-break:break-word}
+ table.rt td::before{content:attr(data-label);color:var(--mute);font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;text-align:left;flex:none;padding-top:2px}
+ table.rt td:not([data-label]){display:block;text-align:left}
+ .pgrid{grid-template-columns:1fr}
  .shell{display:block}
  .side{position:fixed;inset:auto 0 0 0;width:auto;height:auto;flex-direction:row;padding:6px 6px calc(6px + env(safe-area-inset-bottom));gap:0;border-right:0;border-top:1px solid var(--line);z-index:20;background:rgba(255,252,243,.97);backdrop-filter:blur(10px)}
  .side .brand,.side .sidefoot{display:none}
@@ -183,7 +207,10 @@ function draw(){
   document.querySelectorAll('.tab').forEach(b=>b.onclick=async()=>{tab=b.dataset.t;await load()});
   ({dash,sell,prod,ord,req,hist,rev,acc,off,set,staff}[tab])();
 }
-const M=h=>$('#main').innerHTML=h;
+const M=h=>{$('#main').innerHTML=h};
+function mobTables(){document.querySelectorAll('#main table').forEach(t=>{if(t.closest('.tblw')||t.dataset.rt)return;const ths=[...t.querySelectorAll('thead th')];if(ths.length<4){t.dataset.rt='0';return}
+  t.dataset.rt='1';t.classList.add('rt');t.querySelectorAll('tbody tr').forEach(r=>[...r.children].forEach((td,i)=>{const l=ths[i]&&ths[i].textContent.trim();if(l&&!td.hasAttribute('colspan'))td.dataset.label=l}))})}
+new MutationObserver(()=>requestAnimationFrame(mobTables)).observe(document.getElementById('app')||document.body,{childList:true,subtree:true});
 const stock=p=>p.variants.reduce((s,v)=>s+v.stock,0);
 const thumb=p=>p.images[0]?`<img class="thumb" src="/api/img/${p.images[0]}">`:BOTTLE;
 
@@ -345,16 +372,37 @@ function bulkImgs(){
 }
 function prod(){
   M(`<h2>Products</h2><div class="bar"><button class="btn" id="np">+ Add Product</button><button class="btn g" id="bk1">Bulk Add</button><button class="btn g" id="bk2">Bulk Images</button><input id="ps" placeholder="Search..."></div>
-  <div class="panel"><table><thead><tr><th></th><th>Name</th><th>Category</th><th>Sizes / price / stock</th><th>Status</th><th></th></tr></thead><tbody id="pt"></tbody></table></div>`);
-  const fill=()=>{const q=$('#ps').value.toLowerCase();$('#pt').innerHTML=D.products.filter(p=>p.name.toLowerCase().includes(q)).map(p=>`<tr><td>${thumb(p)}</td><td><b>${esc(p.name)}</b>${p.featured?' ★':''}</td><td>${esc(p.category)}</td>
-   <td>${p.variants.map(v=>`${esc(v.size)}: ${rs(v.price)}${v.discount?` (-${v.discount}%)`:''} · <span class="${v.stock<=3?'low':''}">stock ${v.stock}</span>`).join('<br>')}</td>
-   <td><span class="pill ${p.active?'delivered':'cancelled'}">${p.active?'Visible':'Hidden'}</span></td>
-   <td style="white-space:nowrap"><button class="btn g s" data-e="${p.id}">Edit</button> <button class="btn r s" data-d="${p.id}">Delete</button></td></tr>`).join('')||'<tr><td colspan=6 class="mut">No products.</td></tr>'};
+  <div class="pgrid" id="pt"></div>`);
+  const fill=()=>{const q=$('#ps').value.toLowerCase();$('#pt').innerHTML=D.products.filter(p=>p.name.toLowerCase().includes(q)).map(p=>`<div class="pcard"><div>${thumb(p)}</div><div class="pi">
+   <div class="pn"><b>${esc(p.name)}</b>${p.featured?' ★':''} <span class="pill ${p.active?'delivered':'cancelled'}">${p.active?'Visible':'Hidden'}</span></div><div class="mut" style="font-size:12.5px">${esc(p.category)}</div>
+   <div class="pv">${p.variants.map(v=>{const m=v.min==null?3:v.min;return `<div><span>${esc(v.size)} · ${rs(v.price)}${v.discount?` <small class="mut">(-${v.discount}%)</small>`:''}</span><span class="pill ${v.stock===0?'cancelled':v.stock<=m?'pending':'delivered'}">stock ${v.stock}</span></div>`}).join('')}</div>
+   <div class="bar" style="margin:8px 0 0"><button class="btn s" data-st="${p.id}">± Stock</button><button class="btn g s" data-e="${p.id}">Edit</button><button class="btn r s" data-d="${p.id}">Delete</button></div></div></div>`).join('')||'<span class="mut">No products.</span>'};
   fill();$('#ps').oninput=fill;$('#np').onclick=()=>pform(null);$('#bk1').onclick=bulkAdd;$('#bk2').onclick=bulkImgs;
   $('#pt').onclick=async e=>{
+    const st=e.target.closest('[data-st]');if(st)return stockForm(D.products.find(p=>p.id===st.dataset.st));
     const ed=e.target.closest('[data-e]');if(ed)return pform(D.products.find(p=>p.id===ed.dataset.e));
     const dl=e.target.closest('[data-d]');if(dl&&confirm('Delete this product permanently?')){await api('admin/product/'+dl.dataset.d,'DELETE');toast('Deleted');await load()}
   };
+}
+function stockForm(p){
+  const dl={};
+  const REASONS=['Naya maal aaya','Kharab / gum / toota','Sample / gift diya','Ginti theek ki (count)','Doosri wajah'];
+  const log=(D.stocklog||[]).filter(x=>x.pid===p.id).slice(0,8);
+  $('#modal').innerHTML=`<h2>Stock — ${esc(p.name)}</h2><p class="mut">+ dabao to stock barhe ga, − dabao to kam hoga. Bechne par stock khud kam hota hai aur cancel/return par khud wapis aata hai.</p>
+  ${p.variants.map((v,i)=>`<div class="sec"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(v.size)}</b><span class="mut">Abhi: <b id="sc${i}">${v.stock}</b></span></div>
+   <div class="stp"><button class="btn g" data-d="${i}" data-n="-10">−10</button><button class="btn g" data-d="${i}" data-n="-1">−1</button><div class="sv" id="sv${i}">0</div><button class="btn g" data-d="${i}" data-n="1">+1</button><button class="btn g" data-d="${i}" data-n="10">+10</button></div>
+   <div class="mut" id="sn${i}" style="text-align:center;min-height:18px"></div></div>`).join('')}
+  <label>Wajah<select id="srs">${REASONS.map(r=>`<option>${r}</option>`).join('')}</select></label>
+  <div class="bar" style="margin:0"><button class="btn" id="ssave" style="flex:1">Save stock</button><button class="btn g" id="sx">Cancel</button></div>
+  ${log.length?`<div class="sec"><div class="st">Recent changes</div>${log.map(x=>`<div class="lrow"><span>${esc(x.size)} <b class="${x.delta>0?'grn2':'low'}">${x.delta>0?'+':''}${x.delta}</b> → ${x.after}</span><span class="mut">${esc(x.reason||'')} · ${esc(x.by||'')} · ${new Date(x.at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</span></div>`).join('')}</div>`:''}`;
+  $('#ov').classList.add('on');
+  $('#sx').onclick=()=>{$('#ov').classList.remove('on');$('#modal').onclick=null};
+  const upd=i=>{const d=dl[i]||0,v=p.variants[i];$('#sv'+i).textContent=(d>0?'+':'')+d;$('#sv'+i).className='sv '+(d>0?'up':d<0?'dn':'');$('#sn'+i).textContent=d?`Save ke baad: ${v.stock+d}`:'';
+    if(v.stock+d<0)$('#sn'+i).textContent='⚠ Itna stock hai hi nahi'};
+  $('#modal').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;const i=+b.dataset.d;dl[i]=(dl[i]||0)+ +b.dataset.n;upd(i)};
+  $('#ssave').onclick=async()=>{const changes=Object.entries(dl).filter(([,d])=>d).map(([i,d])=>({size:p.variants[+i].size,delta:d}));
+    if(!changes.length)return toast('Koi tabdeeli nahi ki',1);
+    try{await api('admin/stock','POST',{pid:p.id,changes,reason:$('#srs').value});toast('Stock update ho gaya');$('#ov').classList.remove('on');$('#modal').onclick=null;await load()}catch(x){toast(x.message,1)}};
 }
 function pform(p){
   editing=p?JSON.parse(JSON.stringify(p)):{name:'',brand:"Zeen's Fragrance",category:'men',description:'',notes:{top:[],heart:[],base:[]},images:[],badge:'',featured:false,active:true,variants:[{size:'50ml',price:1500,cost:0,discount:0,stock:0},{size:'30ml',price:1000,cost:0,discount:0,stock:0}]};
@@ -401,38 +449,60 @@ function resize(file,max=900,type='image/jpeg',q=.82){return new Promise((res,re
   im.onerror=()=>rej(new Error('Image read nahi hui'));im.src=u})}
 
 // ---------- orders ----------
-function invCell(o,ctl){
-  if(o.dcSet===false&&o.status!=='cancelled'){
-    if(!ctl)return '<span class="pill pending">+ DC pending</span>';
-    return `<span class="pill pending">+ DC pending</span><br><div style="display:flex;gap:4px;margin-top:4px"><input type="number" min="0" max="5000" list="dcl" placeholder="DC Rs." data-dci="${o.id}" style="width:84px"><button class="btn s" data-dc="${o.id}">Set DC</button></div>`;
-  }
-  return `<a class="btn g s" style="text-decoration:none;display:inline-block" target="_blank" href="${invUrl(o)}">Invoice</a> <a class="btn g s" style="text-decoration:none;display:inline-block" target="_blank" href="${invUrl(o)}&slip=1">Slip</a> <button class="btn g s" data-wa="${o.id}">WhatsApp</button>${ctl&&o.source!=='store'&&o.status!=='cancelled'?`<br><span class="mut">DC ${rs(o.delivery||0)}</span> <button class="btn g s" data-edc="${o.id}">Edit DC</button>`:''}`;
-}
-function ordTable(list,ctl=true){
+const stChip=o=>`<span class="pill ${o.status}">${o.status}</span>`;
+const oTime=o=>new Date(o.createdAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+function ordTable(list){
   if(!list.length)return '<span class="mut">No orders yet.</span>';
-  return `<datalist id="dcl">${[0,200,250,300,350,400].map(x=>`<option value="${x}">`).join('')}</datalist><table><thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Delivery charges / Invoice</th></tr></thead><tbody>${list.map(o=>`<tr><td><b>${esc(o.id)}</b><br><span class="pill">${o.source==='store'?'In-store':'Online'}</span></td>
-   <td>${new Date(o.createdAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
-   <td>${esc(o.customer.name)}<br><span class="mut">${esc(o.customer.phone)}</span>${o.customer.address?`<br><span class="mut">${esc(o.customer.address)}, ${esc(o.customer.city)}</span>`:''}${o.customer.note?`<br><i class="mut">${esc(o.customer.note)}</i>`:''}</td>
-   <td>${o.lines.map(l=>`${esc(l.name)} ${esc(l.size)} ×${l.qty}`).join('<br>')}</td>
-   <td>${rs(o.total)}<br><span class="mut">${esc(o.payment)}${o.coupon?' · '+esc(o.coupon):''}${o.paymentRef?'<br>Txn: '+esc(o.paymentRef):''}</span>${o.proof?`<br><button class="btn g s" data-proof="${esc(o.id)}">View proof</button>`:(o.source!=='store'&&o.payment!=='COD'?'<br><span class="low">No proof</span>':'')}${o.source!=='store'&&o.status!=='cancelled'&&o.payment!=='COD'?(o.paid?'<br><span class="pill delivered">Paid</span>':`<br><span class="pill pending">Unpaid</span> <button class="btn g s" data-mp="${o.id}">Mark paid</button>`):''}</td>
-   <td>${ctl&&o.status!=='cancelled'?`<select data-o="${o.id}">${['pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>`:`<span class="pill ${o.status}">${o.status}</span>${ctl&&o.status==='cancelled'&&D.me&&D.me.owner?`<br><button class="btn r s" data-del="${o.id}" style="margin-top:4px">Delete</button>`:''}`}</td><td style="white-space:nowrap">${invCell(o,ctl)}</td></tr>`).join('')}</tbody></table>`;
+  return `<div class="ol">${list.map(o=>{
+    const on=o.source!=='store',first=o.lines[0],more=o.lines.length-1;
+    const flags=[];
+    if(on&&o.dcSet===false&&o.status!=='cancelled')flags.push('<span class="pill pending">DC pending</span>');
+    if(on&&o.status!=='cancelled'&&o.payment!=='COD'){flags.push(o.paid?'<span class="pill delivered">Paid</span>':'<span class="pill pending">Unpaid</span>');if(!o.proof)flags.push('<span class="pill cancelled">No proof</span>')}
+    return `<div class="oc" data-oid="${esc(o.id)}" tabindex="0">
+     <div class="oa"><b>${esc(o.id)}</b> <span class="pill">${on?'Online':'In-store'}</span> ${stChip(o)}</div><div class="or"><b>${rs(o.total)}</b></div>
+     <div class="ob">${esc(o.customer.name||'Walk-in')}${o.customer.phone?' <span class="mut">· '+esc(o.customer.phone)+'</span>':''}</div><div class="or mut">${oTime(o)}</div>
+     <div class="ob mut">${esc(first.name)} ${esc(first.size)} ×${first.qty}${more>0?' · +'+more+' more':''}</div><div class="or mut">${esc(o.payment)}</div>
+     ${flags.length?`<div class="of2">${flags.join(' ')}</div>`:''}</div>`}).join('')}</div>`;
 }
 function ord(){
   const list=D.orders.filter(o=>oFilter==='all'||o.status===oFilter);
-  M(`<h2>Orders</h2><div class="bar"><select id="of">${['all','pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${oFilter===s?'selected':''}>${s}</option>`).join('')}</select><span class="mut">Cancel / return karne par stock apne aap wapis add hota hai.</span></div><div class="panel">${ordTable(list)}</div>`);
+  M(`<h2>Orders</h2><div class="bar"><select id="of">${['all','pending','confirmed','shipped','delivered','cancelled'].map(s=>`<option ${oFilter===s?'selected':''}>${s}</option>`).join('')}</select><span class="mut">Order par tap karein — poori detail aur sab options khulenge.</span></div><div class="panel">${ordTable(list)}</div>`);
   $('#of').onchange=e=>{oFilter=e.target.value;ord()};
-  $('#main').onclick=async e=>{const w=e.target.closest('[data-wa]');if(w)return waOrder(D.orders.find(x=>x.id===w.dataset.wa));
-    const dcb=e.target.closest('[data-dc]');if(dcb){const inp=document.querySelector(`[data-dci="${dcb.dataset.dc}"]`);if(!inp||inp.value==='')return toast('DC amount likhein (0 bhi likh sakte hain)',1);
-      try{await api('admin/order/'+dcb.dataset.dc+'/dc','POST',{amount:+inp.value});toast('DC set — ab invoice/slip ban sakti hai');await load()}catch(x){toast(x.message,1)}return}
-    const edc=e.target.closest('[data-edc]');if(edc){const o=D.orders.find(x=>x.id===edc.dataset.edc);const v=prompt('Delivery charges (Rs.)',o.delivery||0);if(v===null||v.trim()===''||isNaN(+v))return;
-      try{await api('admin/order/'+o.id+'/dc','POST',{amount:+v});toast('DC updated');await load()}catch(x){toast(x.message,1)}return}
-    const dl=e.target.closest('[data-del]');if(dl)return delOrd(D.orders.find(x=>x.id===dl.dataset.del));
-    const pf=e.target.closest('[data-proof]');if(pf)return showProof(D.orders.find(x=>x.id===pf.dataset.proof));
-    const m=e.target.closest('[data-mp]');if(m){try{await api('admin/order/'+m.dataset.mp+'/paid','POST',{paid:true});toast('Marked as paid');await load()}catch(x){toast(x.message,1)}}};
-  $('#main').onchange=async e=>{const s=e.target.closest('[data-o]');if(!s)return;
-    let why='';if(s.value==='cancelled'){const w=prompt('Return / cancel ki wajah (optional). OK dabane par stock wapis add hoga.','');if(w===null)return ord();why=w}
-    try{await api('admin/order/'+s.dataset.o,'POST',{status:s.value,reason:why});toast('Updated');await load()}catch(x){toast(x.message,1)}};
 }
+async function reopenOrd(id){await load();const f=D.orders.find(x=>x.id===id);if(f)orderView(f);else $('#ov').classList.remove('on')}
+function orderView(o){
+  const ed=can('ord'),on=o.source!=='store',cancelled=o.status==='cancelled',cost=oCost(o);
+  const tel=String(o.customer.phone||'').replace(/[^\d+]/g,'');
+  const dt=new Date(o.createdAt).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const payOn=on&&o.payment!=='COD',invOk=!(on&&o.dcSet===false);
+  $('#modal').innerHTML=`<div class="oh"><div><h2 style="margin:0">${esc(o.id)}</h2><div class="mut">${dt} · ${on?'Online order':'In-store sale'}${o.by?' · by '+esc(o.by):''}</div></div>${stChip(o)}</div>
+  <div class="sec"><div class="st">Customer</div><b>${esc(o.customer.name||'Walk-in')}</b>
+   ${o.customer.phone?`<div><a href="tel:${esc(tel)}" class="lk">📞 ${esc(o.customer.phone)}</a></div>`:''}
+   ${o.customer.address?`<div class="mut">📍 ${esc(o.customer.address)}, ${esc(o.customer.city)}</div>`:''}${o.customer.note?`<div class="mut"><i>“${esc(o.customer.note)}”</i></div>`:''}</div>
+  <div class="sec"><div class="st">Items</div><table style="min-width:0"><tbody>${o.lines.map(l=>`<tr><td>${esc(l.name)} <span class="mut">${esc(l.size)}</span><br><small class="mut">${rs(l.unit)} × ${l.qty}</small></td><td style="text-align:right">${rs(l.total)}</td></tr>`).join('')}
+   <tr><td class="mut">Subtotal</td><td style="text-align:right">${rs(o.subtotal)}</td></tr>${o.discount?`<tr><td class="mut">Discount${o.coupon?' ('+esc(o.coupon)+')':''}</td><td style="text-align:right">− ${rs(o.discount)}</td></tr>`:''}
+   ${on?`<tr><td class="mut">Delivery charges</td><td style="text-align:right">${o.dcSet===false?'<span class="pill pending">not set</span>':rs(o.delivery)}</td></tr>`:''}
+   <tr><td><b>Total</b></td><td style="text-align:right"><b>${rs(o.total)}</b></td></tr>
+   ${(o.returns||[]).map(r=>`<tr><td class="mut">Return ${new Date(r.at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}: ${r.items.map(x=>esc(x.name)+' ×'+x.qty).join(', ')}${r.reason?' ('+esc(r.reason)+')':''}</td><td class="low" style="text-align:right">− ${rs(r.refund)}</td></tr>`).join('')}
+   ${can('acc')?`<tr><td class="mut">Profit (cost nikal kar)</td><td style="text-align:right;color:var(--green)"><b>${rs(oRev(o)-cost)}</b></td></tr>`:''}</tbody></table></div>
+  <div class="sec"><div class="st">Payment</div><div>${esc(o.payment)}${o.coupon?' · coupon '+esc(o.coupon):''} ${!on||o.paid?'<span class="pill delivered">Paid</span>':'<span class="pill pending">Unpaid</span>'}</div>
+   ${o.paymentRef?`<div class="mut">Transaction ID: <span style="user-select:all">${esc(o.paymentRef)}</span></div>`:''}
+   <div class="bar" style="margin:8px 0 0">${o.proof?'<button class="btn g s" id="vpf">📷 Payment proof</button>':(payOn?'<span class="low">No proof</span>':'')}${ed&&payOn&&!o.paid&&!cancelled?'<button class="btn s" id="vpaid">Paise mil gaye — Mark paid</button>':''}</div></div>
+  ${on&&!cancelled?`<div class="sec"><div class="st">Delivery charges (DC)</div>${o.dcSet===false?'<div class="mut">Pehle DC set karein, tab invoice banegi.</div>':`<div>Abhi: <b>${rs(o.delivery)}</b></div>`}
+   ${ed?`<div class="bar" style="margin:8px 0 0"><input type="number" id="vdc" min="0" max="5000" placeholder="DC Rs." value="${o.dcSet===false?'':o.delivery}" style="max-width:130px"><button class="btn s" id="vdcb">${o.dcSet===false?'Set DC':'Update DC'}</button></div>`:''}</div>`:''}
+  ${ed&&!cancelled?`<div class="sec"><div class="st">Order status</div><div class="bar" style="margin:0"><select id="vst" style="max-width:190px">${['pending','confirmed','shipped','delivered'].map(x=>`<option ${o.status===x?'selected':''}>${x}</option>`).join('')}</select><button class="btn s" id="vstb">Update status</button></div></div>`:''}
+  <div class="sec"><div class="st">Invoice</div><div class="bar" style="margin:0">${invOk?`<a class="btn s" style="text-decoration:none" target="_blank" href="${invUrl(o)}">Invoice</a><a class="btn g s" style="text-decoration:none" target="_blank" href="${invUrl(o)}&slip=1">Slip</a><button class="btn g s" id="vwa">WhatsApp</button>`:'<span class="mut">DC set karne ke baad invoice/slip aur WhatsApp khulenge.</span>'}</div></div>
+  ${ed?`<div class="sec"><div class="st">Return / Cancel</div>${cancelled?'<span class="mut">Cancelled'+(o.cancelReason?' — '+esc(o.cancelReason):'')+' (stock wapis ho chuka)</span>':'<div class="bar" style="margin:0"><button class="btn s" id="hp">Return item(s)</button><button class="btn r s" id="hx">Poora order cancel</button></div>'}${D.me&&D.me.owner?'<div class="bar" style="margin:8px 0 0"><button class="btn r s" id="hd">Delete invoice</button></div>':''}</div>`:''}
+  <div class="bar" style="margin:0"><button class="btn g" id="hc" style="flex:1">Close</button></div>`;
+  $('#ov').classList.add('on');
+  const B=(id,f)=>{const e=$('#'+id);if(e)e.onclick=f};
+  B('hc',()=>$('#ov').classList.remove('on'));B('vpf',()=>showProof(o));B('hp',()=>retForm(o));B('hx',()=>cancelOrd(o));B('hd',()=>delOrd(o));B('vwa',()=>waOrder(o));
+  B('vpaid',async()=>{try{await api('admin/order/'+o.id+'/paid','POST',{paid:true});toast('Marked as paid');reopenOrd(o.id)}catch(x){toast(x.message,1)}});
+  B('vdcb',async()=>{const v=$('#vdc').value;if(v===''||isNaN(+v))return toast('DC amount likhein (0 bhi likh sakte hain)',1);try{await api('admin/order/'+o.id+'/dc','POST',{amount:+v});toast('DC set');reopenOrd(o.id)}catch(x){toast(x.message,1)}});
+  B('vstb',async()=>{try{await api('admin/order/'+o.id,'POST',{status:$('#vst').value});toast('Status updated');reopenOrd(o.id)}catch(x){toast(x.message,1)}});
+}
+document.addEventListener('click',e=>{const c=e.target.closest('[data-oid]');if(c&&D){const o=D.orders.find(x=>x.id===c.dataset.oid);if(o)orderView(o)}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'){const c=e.target.closest&&e.target.closest('[data-oid]');if(c&&D){const o=D.orders.find(x=>x.id===c.dataset.oid);if(o)orderView(o)}}});
 
 function pwForm(){
   $('#modal').innerHTML=`<h2>Password badlein</h2><p class="mut">${D.me&&D.me.owner?'Owner ka password (kam az kam 8 huroof).':'Aapka apna password (kam az kam 6 huroof).'} Badalne ke baad doosre phone/computer par purana login khud band ho jata hai.</p>
@@ -526,28 +596,10 @@ function histRes(){
     const cs=Object.values(m).sort((a,b)=>b.total-a.total);
     body=`<div class="panel"><table><thead><tr><th>Customer</th><th>Orders</th><th>Total spent</th><th>Perfumes bought</th><th>Last order</th></tr></thead><tbody>${cs.map(c=>`<tr><td><b>${esc(c.name)}</b>${c.n>1?' <span class="pill delivered">Repeat</span>':''}<br><span class="mut">${esc(c.phone)}${c.city?' · '+esc(c.city):''}</span></td><td>${c.n}</td><td>${rs(c.total)}</td>
      <td>${Object.entries(c.items).map(([n,q])=>`${esc(n)} ×${q}`).join('<br>')}</td><td class="mut">${new Date(c.last).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})}</td></tr>`).join('')}</tbody></table></div>`;
-  }else body=`<div class="panel"><table><thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Perfumes</th><th>Total</th><th>Status</th></tr></thead><tbody>${list.map(o=>`<tr data-h="${o.id}" style="cursor:pointer"><td><b>${esc(o.id)}</b><br><span class="pill">${o.source==='store'?'Shop':'Online'}</span></td>
-    <td class="mut">${new Date(o.createdAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})}</td><td>${esc(o.customer.name)}<br><span class="mut">${esc(o.customer.phone)}</span></td>
-    <td>${o.lines.map(l=>`${esc(l.name)} ${esc(l.size)} ×${l.qty}`).join('<br>')}</td><td>${rs(o.total)}<br><span class="mut">${esc(o.payment)}</span></td><td><span class="pill ${o.status}">${o.status}</span></td></tr>`).join('')}</tbody></table><p class="mut">Order par click karein to poori detail, invoice aur slip khulegi.</p></div>`;
+  }else body=`<div class="panel">${ordTable(list.slice(0,150))}${list.length>150?'<p class="mut">Pehle 150 dikh rahe hain — filter se list chhoti karein.</p>':'<p class="mut">Order par tap karein to poori detail khulegi.</p>'}</div>`;
   $('#hres').innerHTML=`<div class="cards"><div class="stat"><span>Records</span><b>${list.length}</b></div><div class="stat"><span>Sales (cancelled chhor kar)</span><b>${rs(tot)}</b></div><div class="stat"><span>Perfumes sold</span><b>${units}</b></div></div>`+body;
-  document.querySelectorAll('[data-h]').forEach(r=>r.onclick=()=>histOpen(D.orders.find(x=>x.id===r.dataset.h)));
 }
-function histOpen(o){
-  const cost=oCost(o),days=D.settings.deliveryDays||'';
-  $('#modal').innerHTML=`<h2>${esc(o.id)} <span class="pill ${o.status}">${o.status}</span></h2>
-  <div class="mut">${new Date(o.createdAt).toLocaleString('en-GB')} · ${o.source==='store'?'In-store sale':'Online order'}</div>
-  <div><b>${esc(o.customer.name)}</b><br>${esc(o.customer.phone)}${o.customer.address?'<br>'+esc(o.customer.address)+', '+esc(o.customer.city):''}${o.customer.note?'<br><i class="mut">'+esc(o.customer.note)+'</i>':''}</div>
-  <table><tbody>${o.lines.map(l=>`<tr><td>${esc(l.name)} ${esc(l.size)} ×${l.qty}</td><td>${rs(l.total)}</td></tr>`).join('')}
-  <tr><td class="mut">Subtotal</td><td>${rs(o.subtotal)}</td></tr>${o.discount?`<tr><td class="mut">Discount${o.coupon?' ('+esc(o.coupon)+')':''}</td><td>− ${rs(o.discount)}</td></tr>`:''}
-  ${o.source!=='store'?`<tr><td class="mut">Delivery charges</td><td>${o.dcSet===false?'<span class="pill pending">not set</span>':rs(o.delivery)}</td></tr>`:''}
-  <tr><td><b>Total</b></td><td><b>${rs(o.total)}</b></td></tr>${(o.returns||[]).map(r=>`<tr><td class="mut">Return ${new Date(r.at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}: ${r.items.map(x=>esc(x.name)+' ×'+x.qty).join(', ')}${r.reason?' ('+esc(r.reason)+')':''}</td><td class="low">− ${rs(r.refund)}</td></tr>`).join('')}<tr><td class="mut">Payment</td><td>${esc(o.payment)}${o.paymentRef?' · Txn '+esc(o.paymentRef):''} ${o.source==='store'||o.paid?'<span class="pill delivered">Paid</span>':'<span class="pill pending">Unpaid</span>'}</td></tr>
-  ${can('acc')?`<tr><td class="mut">Profit (cost nikal kar)</td><td>${rs(oRev(o)-cost)}</td></tr>`:''}</tbody></table>
-  <div class="bar" style="margin:0">${o.dcSet===false&&o.source!=='store'?'<span class="mut">Invoice ke liye pehle Orders tab mein DC set karein.</span>':`<a class="btn" style="text-decoration:none" target="_blank" href="${invUrl(o)}">Invoice</a><a class="btn g" style="text-decoration:none" target="_blank" href="${invUrl(o)}&slip=1">Slip</a><button class="btn g" id="hw">WhatsApp</button>`}<button class="btn g" id="hc">Close</button></div>
-  ${can('ord')?`<div class="bar" style="margin:0;border-top:1px dashed var(--line);padding-top:12px">${o.proof?'<button class="btn g" id="hpf">Payment proof</button>':''}${o.status!=='cancelled'?'<button class="btn" id="hp">Return item(s)</button><button class="btn r" id="hx">Poora order cancel</button>':'<span class="mut">Cancelled'+(o.cancelReason?' — '+esc(o.cancelReason):'')+' (stock wapis ho chuka)</span>'}${D.me&&D.me.owner?'<button class="btn r" id="hd">Delete invoice</button>':''}</div>`:''}`;
-  $('#ov').classList.add('on');
-  const hpf=$('#hpf');if(hpf)hpf.onclick=()=>showProof(o);const hp=$('#hp');if(hp)hp.onclick=()=>retForm(o);const hx=$('#hx');if(hx)hx.onclick=()=>cancelOrd(o);const hd=$('#hd');if(hd)hd.onclick=()=>delOrd(o);
-  $('#hc').onclick=()=>$('#ov').classList.remove('on');const w=$('#hw');if(w)w.onclick=()=>waOrder(o);
-}
+function histOpen(o){orderView(o)}
 
 // ---------- reviews ----------
 function rev(){
