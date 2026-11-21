@@ -76,7 +76,7 @@ tr:last-child td{border-bottom:0}
 .modal{background:linear-gradient(160deg,#ffffff,#fffaf0);border:1px solid var(--line);border-radius:20px;width:min(780px,100%);padding:22px;display:grid;gap:13px;box-shadow:0 24px 70px rgba(90,65,10,.28);animation:pop .18s ease-out}
 @keyframes pop{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-.vr{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:end}
+.vr{display:grid;grid-template-columns:repeat(6,1fr) auto;gap:8px;align-items:end}
 .imgs{display:flex;gap:10px;flex-wrap:wrap}
 .im{position:relative}.im img{width:84px;height:84px;object-fit:cover;border-radius:12px;display:block;border:1px solid var(--line)}
 .im button{position:absolute;top:-7px;right:-7px;background:var(--red);color:#fff;border-radius:50%;width:22px;height:22px;line-height:22px;font-size:14px;box-shadow:0 2px 8px rgba(90,65,10,.3)}
@@ -99,6 +99,13 @@ input[type=checkbox],input[type=radio]{accent-color:var(--gold)}
 .ht{height:8px;border-radius:99px;background:var(--bg);overflow:hidden;margin-top:3px}.ht i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:99px}
 .lg{font-size:12px;color:var(--mute);margin:-4px 0 4px}.lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin:0 4px 0 10px;vertical-align:middle}.lg i:first-child{margin-left:0}
 ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px}::-webkit-scrollbar-track{background:transparent}
+.greet{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.ph2{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.chips{display:flex;gap:6px}.chip{border:1px solid var(--line);border-radius:99px;padding:5px 13px;font-size:13px;color:var(--mute);background:#fff}.chip.on{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#1b1608;border-color:transparent;font-weight:600}
+.cw{position:relative;margin-top:6px}.chart{width:100%;height:auto;display:block;touch-action:pan-y}.ct{font-size:12px;fill:var(--mute)}@media(max-width:900px){.ct{font-size:18px}}
+.tip{position:absolute;top:0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 11px;font-size:12.5px;box-shadow:var(--sh);pointer-events:none;width:150px;z-index:2}
+.tgl{margin-top:12px}.tblw{margin-top:10px;max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:12px}.tblw table{min-width:0}
+.hb2{margin-bottom:12px}.hl2{display:flex;justify-content:space-between;gap:8px;margin-bottom:4px;font-size:13.5px}.hb2 .ht{height:10px}
 @media(max-width:900px){
  .shell{display:block}
  .side{position:fixed;inset:auto 0 0 0;width:auto;height:auto;flex-direction:row;padding:6px 6px calc(6px + env(safe-area-inset-bottom));gap:0;border-right:0;border-top:1px solid var(--line);z-index:20;background:rgba(255,252,243,.97);backdrop-filter:blur(10px)}
@@ -181,26 +188,88 @@ const stock=p=>p.variants.reduce((s,v)=>s+v.stock,0);
 const thumb=p=>p.images[0]?`<img class="thumb" src="/api/img/${p.images[0]}">`:BOTTLE;
 
 // ---------- dashboard ----------
+let DASH={d:30};
+const kn=n=>{n=Math.round(n);return n>=1000?(n/1000).toFixed(1).replace('.0','')+'k':String(n)};
+const kfmt=n=>{n=Math.round(n);return n>=1000?'Rs. '+(n/1000).toFixed(n%1000?1:0)+'k':'Rs. '+n};
+function dLine(days,showProfit){
+  const W=640,H=250,L=56,R=14,T=14,B=30,iw=W-L-R,ih=H-T-B;
+  const mx=Math.max(1,...days.map(x=>Math.max(x.rev,showProfit?x.profit:0)));
+  const step=Math.pow(10,Math.floor(Math.log10(mx)))/2,top=Math.ceil(mx/step)*step||1;
+  const X=i=>L+(days.length<2?iw/2:iw*i/(days.length-1)),Y=v=>T+ih-ih*Math.max(0,v)/top;
+  const path=k=>days.map((x,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(x[k]).toFixed(1)).join(' ');
+  const ticks=[0,1,2,3,4].map(i=>top*i/4);
+  const xl=[0,.25,.5,.75,1].map(f=>Math.round(f*(days.length-1)));
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart" id="lc" role="img" aria-label="Revenue and profit chart">
+   ${ticks.map(t=>`<line x1="${L}" x2="${W-R}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-dasharray="4 4"/><text x="${L-8}" y="${Y(t)+5}" text-anchor="end" class="ct">${kn(t)}</text>`).join('')}
+   <path d="${path('rev')} L${X(days.length-1)} ${Y(0)} L${X(0)} ${Y(0)}Z" fill="rgba(184,138,42,.14)"/>
+   <path d="${path('rev')}" fill="none" stroke="var(--gold)" stroke-width="2.4" stroke-linejoin="round"/>
+   ${showProfit?`<path d="${path('profit')}" fill="none" stroke="var(--green)" stroke-width="2.4" stroke-linejoin="round"/>`:''}
+   ${xl.map(i=>`<text x="${X(i)}" y="${H-8}" text-anchor="${i===xl[xl.length-1]?'end':'middle'}" class="ct">${days[i].label}</text>`).join('')}
+   <line id="lcv" x1="0" x2="0" y1="${T}" y2="${T+ih}" stroke="var(--mute)" stroke-dasharray="3 3" style="display:none"/>
+  </svg><div class="tip" id="lct" style="display:none"></div>`;
+}
+function dBars(rows,color){ // rows: [label,value,sub]
+  const mx=Math.max(1,...rows.map(r=>r[1]));
+  return rows.length?rows.map(r=>`<div class="hb2"><div class="hl2"><span>${esc(r[0])}</span><b>${rs(r[1])}</b></div><div class="ht"><i style="width:${Math.max(3,r[1]/mx*100)}%;${color?'background:'+color:''}"></i></div><small class="mut">${r[2]}</small></div>`).join(''):'<span class="mut">Abhi koi sale nahi.</span>';
+}
+function dTgl(id,tableHtml){return `<button class="btn g s tgl" data-tg="${id}">Show table</button><div class="tblw" id="${id}" style="display:none">${tableHtml}</div>`}
 function dash(){
+  const prof=can('acc');
   const live=D.orders.filter(o=>o.status!=='cancelled'),now=new Date(),td=now.toDateString();
-  const sum=a=>a.reduce((s,o)=>s+o.total,0);
+  const sum=a=>a.reduce((s,o)=>s+o.total,0),pr=a=>a.reduce((s,o)=>s+oRev(o)-oCost(o),0);
   const today=live.filter(o=>new Date(o.createdAt).toDateString()===td);
   const month=live.filter(o=>{const d=new Date(o.createdAt);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()});
-  const low=[];D.products.forEach(p=>p.variants.forEach(v=>{if(v.stock<=3)low.push([p,v])}));
+  const vs=[];D.products.forEach(p=>p.variants.forEach(v=>vs.push([p,v,v.min==null?3:v.min])));
+  const low=vs.filter(([p,v,m])=>v.stock<=m).sort((a,b)=>a[1].stock-b[1].stock),outN=vs.filter(x=>x[1].stock===0).length;
   const val=D.products.reduce((s,p)=>s+p.variants.reduce((a,v)=>a+v.stock*v.price,0),0);
-  const best={};live.forEach(o=>o.lines.forEach(l=>best[l.name]=(best[l.name]||0)+l.qty));
-  const top=Object.entries(best).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  M(`<h2>Dashboard</h2><div class="cards">
+  // period data
+  const N=DASH.d,t0=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const days=[];for(let i=N-1;i>=0;i--){const d=new Date(t0);d.setDate(d.getDate()-i);days.push({key:ymd(d),label:d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}),n:0,rev:0,profit:0})}
+  const idx={};days.forEach((x,i)=>idx[x.key]=i);
+  const per=live.filter(o=>idx[ymd(new Date(o.createdAt))]!==undefined);
+  per.forEach(o=>{const x=days[idx[ymd(new Date(o.createdAt))]];x.n++;x.rev+=oRev(o);x.profit+=oRev(o)-oCost(o)});
+  const prod={};per.forEach(o=>o.lines.forEach(l=>{const a=prod[l.name]||(prod[l.name]={rev:0,profit:0,q:0});a.rev+=l.total;a.profit+=l.total-(l.cost||0)*l.qty;a.q+=l.qty}));
+  const top=Object.entries(prod).sort((a,b)=>b[1].rev-a[1].rev).slice(0,6);
+  const grp=f=>{const g={};per.forEach(o=>{const k=f(o),a=g[k]||(g[k]={rev:0,profit:0,n:0});a.rev+=oRev(o);a.profit+=oRev(o)-oCost(o);a.n++});return Object.entries(g).sort((a,b)=>b[1].rev-a[1].rev)};
+  const byStaff=grp(o=>o.by||(o.source==='store'?'Unassigned':'Online customers')),byCh=grp(o=>o.source==='store'?'Shop (in-store)':'Online orders');
+  const sub=a=>`${a.n} sales${prof?' · profit '+rs(a.profit):''}`;
+  const dtab=`<table><thead><tr><th>Period</th><th>Sales</th><th>Revenue</th>${prof?'<th>Profit</th>':''}</tr></thead><tbody>${days.slice().reverse().map(x=>`<tr><td>${x.label}</td><td>${x.n}</td><td>${rs(x.rev)}</td>${prof?`<td>${rs(x.profit)}</td>`:''}</tr>`).join('')}</tbody></table>`;
+  const ttab=`<table><thead><tr><th>Perfume</th><th>Units</th><th>Revenue</th>${prof?'<th>Profit</th>':''}</tr></thead><tbody>${top.map(([n,a])=>`<tr><td>${esc(n)}</td><td>${a.q}</td><td>${rs(a.rev)}</td>${prof?`<td>${rs(a.profit)}</td>`:''}</tr>`).join('')}</tbody></table>`;
+  const tot=days.reduce((a,x)=>({rev:a.rev+x.rev,profit:a.profit+x.profit,n:a.n+x.n}),{rev:0,profit:0,n:0});
+  M(`<div class="greet"><div><h2 style="margin-bottom:2px">Good to see you, ${esc((D.me&&D.me.name)||'Owner')}</h2><span class="mut">How ${esc(D.settings.shopName||'your shop')} is doing today.</span></div>${can('sell')?'<button class="btn" id="dsell">🛒 New sale</button>':''}</div>
+  <div class="cards">
    <div class="stat"><span>Today's sales</span><b>${rs(sum(today))}</b><small class="mut">${today.length} orders</small></div>
+   ${prof?`<div class="stat"><span>Today's profit</span><b class="grn">${rs(pr(today))}</b><small class="mut">cost nikal kar</small></div>`:''}
    <div class="stat"><span>This month</span><b>${rs(sum(month))}</b><small class="mut">${month.length} orders</small></div>
+   ${prof?`<div class="stat"><span>Profit this month</span><b class="grn">${rs(pr(month))}</b></div>`:''}
    <div class="stat"><span>Total sales</span><b>${rs(sum(live))}</b><small class="mut">${live.length} orders</small></div>
    <div class="stat"><span>Pending orders</span><b>${D.orders.filter(o=>o.status==='pending').length}</b></div>
    <div class="stat"><span>Waiting for DC</span><b>${D.orders.filter(o=>o.dcSet===false&&o.status!=='cancelled').length}</b><small class="mut">set delivery charges</small></div>
    <div class="stat"><span>Customer requests</span><b>${(D.requests||[]).filter(r=>r.status==='open').length}</b><small class="mut">out-of-stock demand</small></div>
-   <div class="stat"><span>Stock (units)</span><b>${D.products.reduce((s,p)=>s+stock(p),0)}</b><small class="mut">Value ${rs(val)}</small></div></div>
-   <div class="g2"><div class="panel"><h2 style="font-size:20px">Low / out of stock</h2>${low.length?`<table><tbody>${low.map(([p,v])=>`<tr><td>${esc(p.name)} ${esc(v.size)}</td><td class="low">${v.stock} left</td></tr>`).join('')}</tbody></table>`:'<span class="mut">All good.</span>'}</div>
-   <div class="panel"><h2 style="font-size:20px">Best sellers</h2>${top.length?`<table><tbody>${top.map(([n,q])=>`<tr><td>${esc(n)}</td><td>${q} sold</td></tr>`).join('')}</tbody></table>`:'<span class="mut">No sales yet.</span>'}</div></div>
-   <div class="panel"><h2 style="font-size:20px">Recent orders</h2>${ordTable(D.orders.slice(0,6),false)}</div>`);
+   <div class="stat"><span>Stock (units)</span><b>${D.products.reduce((s,p)=>s+stock(p),0)}</b><small class="mut">${D.products.length} products · Value ${rs(val)}</small></div>
+   <div class="stat"><span>Low stock</span><b style="color:var(--amber)">${low.length}</b><small class="mut">at or below minimum</small></div>
+   <div class="stat"><span>Out of stock</span><b class="red">${outN}</b><small class="mut">sizes with 0 left</small></div></div>
+  <div class="panel"><div class="ph2"><div><h2 style="font-size:18px">Revenue${prof?' and profit':''}</h2><span class="mut">Y-axis Rs. mein · Last ${N} days · ${tot.n} sales · ${rs(tot.rev)}${prof?' · profit '+rs(tot.profit):''}</span></div>
+   <div class="chips">${[7,30,90].map(d=>`<button class="chip ${d===N?'on':''}" data-dd="${d}">${d}d</button>`).join('')}</div></div>
+   <div class="lg"><i style="background:var(--gold)"></i>Revenue (delivery ke baghair)${prof?'<i style="background:var(--green)"></i>Profit':''}</div>
+   <div class="cw">${dLine(days,prof)}</div>${dTgl('t1',dtab)}</div>
+  <div class="g2"><div class="panel"><h2 style="font-size:18px">Top-selling perfumes</h2><span class="mut">By revenue, last ${N} days</span><div style="margin-top:10px">${dBars(top.map(([n,a])=>[n,a.rev,`${a.q} units${prof?' · profit '+rs(a.profit):''}`]))}</div>${dTgl('t2',ttab)}</div>
+   <div class="panel"><h2 style="font-size:18px">Sales by staff</h2><span class="mut">Last ${N} days</span><div style="margin-top:10px">${dBars(byStaff.map(([k,a])=>[k,a.rev,sub(a)]),'var(--blue)')}</div>
+    <h2 style="font-size:18px;margin-top:18px">Online vs Shop</h2><div style="margin-top:10px">${dBars(byCh.map(([k,a])=>[k,a.rev,sub(a)]),'var(--green)')}</div></div></div>
+  <div class="g2"><div class="panel"><div class="ph2"><div><h2 style="font-size:18px">Low / out of stock</h2><span class="mut">Reorder these soon</span></div><button class="btn g s" id="dprod">Products →</button></div>
+   ${low.length?`<table style="min-width:0"><tbody>${low.slice(0,10).map(([p,v,m])=>`<tr><td><b>${esc(p.name)}</b> <span class="mut">${esc(v.size)}</span></td><td style="text-align:right">${v.stock===0?'<span class="pill cancelled">Out of stock</span>':`<span class="pill pending">${v.stock} left</span> <small class="mut">min ${m}</small>`}</td></tr>`).join('')}</tbody></table>${low.length>10?`<p class="mut">+${low.length-10} aur… Products me dekhein</p>`:''}`:'<span class="mut">Sab stock theek hai.</span>'}</div>
+   <div class="panel"><h2 style="font-size:18px">Recent orders</h2>${ordTable(D.orders.slice(0,5),false)}</div></div>`);
+  $('#main').onclick=e=>{
+    const t=e.target.closest('[data-tg]');if(t){const el=$('#'+t.dataset.tg),on=el.style.display==='none';el.style.display=on?'block':'none';t.textContent=on?'Hide table':'Show table';return}
+    const d=e.target.closest('[data-dd]');if(d){DASH.d=+d.dataset.dd;return dash()}
+    if(e.target.closest('#dsell')){tab='sell';return draw()}
+    if(e.target.closest('#dprod')){tab='prod';return draw()}};
+  const svg=$('#lc');if(svg){const tip=$('#lct'),cv=$('#lcv'),L=56,R=14,W=640;
+    const show=ev=>{const r=svg.getBoundingClientRect(),px=(ev.clientX-r.left)/r.width*W;const i=Math.max(0,Math.min(days.length-1,Math.round((px-L)/(W-L-R)*(days.length-1))));const x=days[i];
+      const sx=L+(W-L-R)*(days.length<2?.5:i/(days.length-1));cv.setAttribute('x1',sx);cv.setAttribute('x2',sx);cv.style.display='';
+      tip.innerHTML=`<b>${x.label}</b><div>Sales <b>${x.n}</b></div><div>Revenue <b>${rs(x.rev)}</b></div>${prof?`<div>Profit <b>${rs(x.profit)}</b></div>`:''}`;tip.style.display='block';
+      const left=sx/W*r.width;tip.style.left=Math.min(Math.max(left-70,0),r.width-150)+'px'};
+    svg.addEventListener('pointerdown',show);svg.addEventListener('pointermove',show);svg.addEventListener('pointerleave',()=>{tip.style.display='none';cv.style.display='none'})}
 }
 
 // ---------- products ----------
@@ -312,9 +381,9 @@ function pform(p){
     try{await api('admin/product','POST',body);$('#ov').classList.remove('on');toast('Saved');await load()}catch(x){$('#f_er').textContent=x.message}
   };
 }
-function readVars(){editing.variants=[...document.querySelectorAll('.vr')].map(r=>({size:r.querySelector('.s').value,price:+r.querySelector('.p').value,cost:+r.querySelector('.c').value,discount:+r.querySelector('.d').value,stock:+r.querySelector('.k').value}))}
+function readVars(){editing.variants=[...document.querySelectorAll('.vr')].map(r=>({size:r.querySelector('.s').value,price:+r.querySelector('.p').value,cost:+r.querySelector('.c').value,discount:+r.querySelector('.d').value,stock:+r.querySelector('.k').value,min:+r.querySelector('.mn').value}))}
 function drawVars(){
-  $('#f_vars').innerHTML=editing.variants.map((v,i)=>`<div class="vr"><label>Size<input class="s" value="${esc(v.size)}" placeholder="50ml"></label><label>Price (Rs.)<input class="p" type="number" min="0" value="${v.price}"></label><label ${can('acc')?'':'style="display:none"'}>Cost (Rs.)<input class="c" type="number" min="0" value="${v.cost||0}"></label><label>Discount %<input class="d" type="number" min="0" max="95" value="${v.discount}"></label><label>Stock<input class="k" type="number" min="0" value="${v.stock}"></label><button class="btn r s" data-rv="${i}">✕</button></div>`).join('');
+  $('#f_vars').innerHTML=editing.variants.map((v,i)=>`<div class="vr"><label>Size<input class="s" value="${esc(v.size)}" placeholder="50ml"></label><label>Price (Rs.)<input class="p" type="number" min="0" value="${v.price}"></label><label ${can('acc')?'':'style="display:none"'}>Cost (Rs.)<input class="c" type="number" min="0" value="${v.cost||0}"></label><label>Discount %<input class="d" type="number" min="0" max="95" value="${v.discount}"></label><label>Stock<input class="k" type="number" min="0" value="${v.stock}"></label><label>Min stock<input class="mn" type="number" min="0" value="${v.min==null?3:v.min}"></label><button class="btn r s" data-rv="${i}">✕</button></div>`).join('');
   $('#f_vars').onclick=e=>{const b=e.target.closest('[data-rv]');if(b){readVars();editing.variants.splice(+b.dataset.rv,1);drawVars()}};
 }
 function drawImgs(){
