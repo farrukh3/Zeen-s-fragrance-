@@ -280,6 +280,32 @@ module.exports = async (req, res) => {
       if (!au) return send(401, { error: 'Login zaroori hai' });
       const need = (p) => { if (!au.perms.has(p)) throw L.httpErr(403, 'Is kaam ki ijazat nahi hai'); };
 
+      // quick stock add/remove (with a log of who changed what)
+      if (method === 'POST' && b === 'stock') {
+        need('prod');
+        const body = await readBody(req);
+        const products = await getProducts();
+        const p = products.find((x) => x.id === str(body.pid, 40));
+        if (!p) return send(404, { error: 'Product nahi mila' });
+        const ch = (Array.isArray(body.changes) ? body.changes : []).map((c) => ({ size: str(c.size, 20), delta: Math.round(+c.delta) })).filter((c) => c.delta && isFinite(c.delta));
+        if (!ch.length) return send(400, { error: 'Koi tabdeeli nahi ki' });
+        const reason = str(body.reason, 80), at = new Date().toISOString(), log = (await db.get('stocklog')) || [];
+        for (const c of ch) {
+          const v = p.variants.find((x) => x.size === c.size);
+          if (!v) return send(400, { error: 'Size nahi mila: ' + c.size });
+          if (Math.abs(c.delta) > 10000) return send(400, { error: 'Itni bari quantity allowed nahi' });
+          if (v.stock + c.delta < 0) return send(400, { error: `${p.name} ${v.size}: stock se zyada remove nahi ho sakta (abhi ${v.stock})` });
+        }
+        for (const c of ch) {
+          const v = p.variants.find((x) => x.size === c.size);
+          v.stock += c.delta;
+          log.unshift({ at, by: au.name, pid: p.id, pname: p.name, size: v.size, delta: c.delta, after: v.stock, reason });
+        }
+        await db.set('products', products);
+        await db.set('stocklog', log.slice(0, 300));
+        return send(200, { ok: true });
+      }
+
       if (method === 'GET' && b === 'data') {
         const [settings, products0, orders0, coupons, expenses0, requests, reviews, staff] = await Promise.all([getSettings(), getProducts(), getOrders(), getCoupons(), getExpenses(), getRequests(), getReviews(), getStaff()]);
         let products = products0, orders = orders0;
@@ -291,8 +317,9 @@ module.exports = async (req, res) => {
           products = products.map((p) => ({ ...p, variants: p.variants.map(({ cost, ...v }) => v) }));
           orders = orders.map(L.stripCost);
         }
+        const stocklog = au.perms.has('prod') ? ((await db.get('stocklog')) || []).slice(0, 120) : [];
         return send(200, {
-          settings, products, orders, coupons, expenses: seeCost ? expenses0 : [], requests, reviews: au.perms.has('rev') ? reviews : [],
+          stocklog, settings, products, orders, coupons, expenses: seeCost ? expenses0 : [], requests, reviews: au.perms.has('rev') ? reviews : [],
           staff: au.owner ? staff.map(({ salt, hash, ...x }) => x) : [],
           me: { owner: au.owner, name: au.name, perms: [...au.perms] },
         });
