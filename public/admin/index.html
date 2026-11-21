@@ -371,18 +371,40 @@ function bulkImgs(){
   };
 }
 function prod(){
-  M(`<h2>Products</h2><div class="bar"><button class="btn" id="np">+ Add Product</button><button class="btn g" id="bk1">Bulk Add</button><button class="btn g" id="bk2">Bulk Images</button><input id="ps" placeholder="Search..."></div>
+  M(`<h2>Products</h2><div class="bar"><button class="btn" id="np">+ Add Product</button><button class="btn g" id="bk1">Bulk Add</button><button class="btn g" id="bk2">Bulk Images</button><button class="btn g" id="bk3">📜 Stock history</button><input id="ps" placeholder="Search..."></div>
   <div class="pgrid" id="pt"></div>`);
   const fill=()=>{const q=$('#ps').value.toLowerCase();$('#pt').innerHTML=D.products.filter(p=>p.name.toLowerCase().includes(q)).map(p=>`<div class="pcard"><div>${thumb(p)}</div><div class="pi">
    <div class="pn"><b>${esc(p.name)}</b>${p.featured?' ★':''} <span class="pill ${p.active?'delivered':'cancelled'}">${p.active?'Visible':'Hidden'}</span></div><div class="mut" style="font-size:12.5px">${esc(p.category)}</div>
    <div class="pv">${p.variants.map(v=>{const m=v.min==null?3:v.min;return `<div><span>${esc(v.size)} · ${rs(v.price)}${v.discount?` <small class="mut">(-${v.discount}%)</small>`:''}</span><span class="pill ${v.stock===0?'cancelled':v.stock<=m?'pending':'delivered'}">stock ${v.stock}</span></div>`}).join('')}</div>
    <div class="bar" style="margin:8px 0 0"><button class="btn s" data-st="${p.id}">± Stock</button><button class="btn g s" data-e="${p.id}">Edit</button><button class="btn r s" data-d="${p.id}">Delete</button></div></div></div>`).join('')||'<span class="mut">No products.</span>'};
-  fill();$('#ps').oninput=fill;$('#np').onclick=()=>pform(null);$('#bk1').onclick=bulkAdd;$('#bk2').onclick=bulkImgs;
+  fill();$('#ps').oninput=fill;$('#np').onclick=()=>pform(null);$('#bk1').onclick=bulkAdd;$('#bk2').onclick=bulkImgs;$('#bk3').onclick=()=>stockHist();
   $('#pt').onclick=async e=>{
     const st=e.target.closest('[data-st]');if(st)return stockForm(D.products.find(p=>p.id===st.dataset.st));
     const ed=e.target.closest('[data-e]');if(ed)return pform(D.products.find(p=>p.id===ed.dataset.e));
     const dl=e.target.closest('[data-d]');if(dl&&confirm('Delete this product permanently?')){await api('admin/product/'+dl.dataset.d,'DELETE');toast('Deleted');await load()}
   };
+}
+let SH={q:'',t:'all',u:'all',r:'all'};
+function stockHist(q){
+  if(q!==undefined)SH={q,t:'all',u:'all',r:'all'};
+  const all=D.stocklog||[],now=Date.now(),t0=new Date();t0.setHours(0,0,0,0);
+  const lim={all:0,today:t0.getTime(),'7':now-7*864e5,'30':now-30*864e5}[SH.r];
+  const list=all.filter(x=>(!SH.q||(x.pname+' '+x.size).toLowerCase().includes(SH.q.toLowerCase()))&&(SH.t==='all'||(SH.t==='add'?x.delta>0:x.delta<0))&&(SH.u==='all'||x.by===SH.u)&&(!lim||new Date(x.at).getTime()>=lim));
+  const added=list.filter(x=>x.delta>0).reduce((a,x)=>a+x.delta,0),removed=list.filter(x=>x.delta<0).reduce((a,x)=>a+x.delta,0);
+  const users=[...new Set(all.map(x=>x.by).filter(Boolean))];
+  M(`<div class="bar" style="margin-bottom:6px"><button class="btn g s" id="shb">← Products</button></div><h2>Stock history</h2>
+  <p class="mut">Jo bhi stock haath se add/remove hua (± Stock, Edit form, naya product) yahan likha hota hai: kisne, kab, kitna aur kyun. Bikri aur return/cancel Orders me dikhte hain.</p>
+  <div class="cards"><div class="stat"><span>Added</span><b class="grn">+${added}</b><small class="mut">units</small></div><div class="stat"><span>Removed</span><b class="red">${removed}</b><small class="mut">units</small></div><div class="stat"><span>Entries</span><b>${list.length}</b></div></div>
+  <div class="bar"><input id="shq" placeholder="Perfume search..." value="${esc(SH.q)}"><select id="sht">${[['all','Add + Remove'],['add','Sirf add'],['rem','Sirf remove']].map(([v,l])=>`<option value="${v}" ${SH.t===v?'selected':''}>${l}</option>`).join('')}</select>
+   <select id="shr">${[['all','Sab din'],['today','Aaj'],['7','7 din'],['30','30 din']].map(([v,l])=>`<option value="${v}" ${SH.r===v?'selected':''}>${l}</option>`).join('')}</select>
+   <select id="shu"><option value="all">Sab log</option>${users.map(u=>`<option ${SH.u===u?'selected':''}>${esc(u)}</option>`).join('')}</select></div>
+  <div class="ol">${list.length?list.slice(0,200).map(x=>`<div class="oc" style="cursor:default"><div class="oa"><b>${esc(x.pname)}</b> <span class="pill">${esc(x.size)}</span></div><div class="or"><b style="color:${x.delta>0?'var(--green)':'var(--red)'}">${x.delta>0?'+':''}${x.delta}</b></div>
+   <div class="ob mut">${esc(x.reason||'—')}</div><div class="or mut">ab ${x.after}</div>
+   <div class="ob mut" style="grid-column:1/-1;font-size:12.5px">👤 ${esc(x.by||'?')} · ${new Date(x.at).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div></div>`).join(''):'<div class="panel mut">Abhi koi stock history nahi. Pehli baar ± Stock se add/remove karne par yahan aayegi.</div>'}</div>
+  ${list.length>200?`<p class="mut">Pehli 200 entries dikh rahi hain — filter lagayein.</p>`:''}`);
+  $('#shb').onclick=()=>prod();
+  const re=()=>stockHist();$('#shq').oninput=e=>{SH.q=e.target.value;clearTimeout(window.__sht);window.__sht=setTimeout(()=>{stockHist();const i=$('#shq');i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)};
+  $('#sht').onchange=e=>{SH.t=e.target.value;re()};$('#shr').onchange=e=>{SH.r=e.target.value;re()};$('#shu').onchange=e=>{SH.u=e.target.value;re()};
 }
 function stockForm(p){
   const dl={};
@@ -394,8 +416,9 @@ function stockForm(p){
    <div class="mut" id="sn${i}" style="text-align:center;min-height:18px"></div></div>`).join('')}
   <label>Wajah<select id="srs">${REASONS.map(r=>`<option>${r}</option>`).join('')}</select></label>
   <div class="bar" style="margin:0"><button class="btn" id="ssave" style="flex:1">Save stock</button><button class="btn g" id="sx">Cancel</button></div>
-  ${log.length?`<div class="sec"><div class="st">Recent changes</div>${log.map(x=>`<div class="lrow"><span>${esc(x.size)} <b class="${x.delta>0?'grn2':'low'}">${x.delta>0?'+':''}${x.delta}</b> → ${x.after}</span><span class="mut">${esc(x.reason||'')} · ${esc(x.by||'')} · ${new Date(x.at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</span></div>`).join('')}</div>`:''}`;
+  ${log.length?`<div class="sec"><div class="st" style="display:flex;justify-content:space-between">Recent changes <a href="#" id="shall" class="lk" style="text-transform:none;letter-spacing:0">Poori history →</a></div>${log.map(x=>`<div class="lrow"><span>${esc(x.size)} <b class="${x.delta>0?'grn2':'low'}">${x.delta>0?'+':''}${x.delta}</b> → ${x.after}</span><span class="mut">${esc(x.reason||'')} · ${esc(x.by||'')} · ${new Date(x.at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</span></div>`).join('')}</div>`:''}`;
   $('#ov').classList.add('on');
+  const sa=$('#shall');if(sa)sa.onclick=e=>{e.preventDefault();$('#ov').classList.remove('on');$('#modal').onclick=null;stockHist(p.name)};
   $('#sx').onclick=()=>{$('#ov').classList.remove('on');$('#modal').onclick=null};
   const upd=i=>{const d=dl[i]||0,v=p.variants[i];$('#sv'+i).textContent=(d>0?'+':'')+d;$('#sv'+i).className='sv '+(d>0?'up':d<0?'dn':'');$('#sn'+i).textContent=d?`Save ke baad: ${v.stock+d}`:'';
     if(v.stock+d<0)$('#sn'+i).textContent='⚠ Itna stock hai hi nahi'};
