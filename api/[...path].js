@@ -469,7 +469,7 @@ module.exports = async (req, res) => {
         L.applyStock(products, lines, -1);
         const { no, id } = await nextOrderId();
         const order = {
-          id, no, token: newToken(), createdAt: new Date().toISOString(), source: 'store', status: 'delivered', dcSet: true,
+          id, no, token: newToken(), createdAt: new Date().toISOString(), source: 'store', by: au.name, status: 'delivered', dcSet: true,
           payment: ['Cash', 'Card', 'Bank Transfer', 'Easypaisa', 'JazzCash'].includes(body.payment) ? body.payment : 'Cash', paid: true,
           customer: { name: str(body.customerName, 80) || 'Walk-in', phone: str(body.customerPhone, 20), city: '', address: '', note: '' },
           lines, ...t, coupon: '',
