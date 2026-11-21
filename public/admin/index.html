@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>Admin | Zeen's Fragrance</title>
+<link rel="manifest" href="/admin/manifest.webmanifest">
+<meta name="theme-color" content="#b88a2a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Zeen Admin">
+<link rel="apple-touch-icon" href="/admin/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/admin/icon-192.png">
 <style>
 :root{--bg:#fbf7ee;--bg2:#fffdf8;--card:#ffffff;--card2:#fff9ea;--line:#eadfc4;--gold:#b88a2a;--gold2:#d9b25a;--ink:#2b2416;--mute:#7c705a;--red:#c8432d;--green:#2a9457;--blue:#2a78c8;--amber:#a87b0c;--r:16px;--sh:0 6px 22px rgba(150,115,40,.12);--side:232px}
 *{box-sizing:border-box;margin:0}
@@ -1015,5 +1022,6 @@ function set(){
 }
 load();
 </script>
+<script>if("serviceWorker" in navigator)addEventListener("load",function(){navigator.serviceWorker.register("/admin/sw.js",{scope:"/admin/"}).catch(function(){})})</script>
 </body>
 </html>
