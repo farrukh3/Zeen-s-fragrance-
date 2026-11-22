@@ -112,6 +112,15 @@ input[type=checkbox],input[type=radio]{accent-color:var(--gold)}
 .oc .oa{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.oc .or{text-align:right;font-size:13px;align-self:center}.oc .or b{font-size:16px;color:var(--gold)}.oc .ob{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .oc .of2{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
 .oh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.nrow{display:grid;grid-template-columns:1.2fr 1fr auto auto;gap:6px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:14px;background:#fff;margin-bottom:8px}
+.nrow .rp{grid-column:1/-1}
+.nrow input[type=checkbox]{width:20px;height:20px;padding:0;accent-color:var(--gold)}
+.nrow .tk{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--mute);white-space:nowrap}
+.nrx{padding:8px 11px}
+.ncard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:var(--sh)}
+.nl{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+.nl:last-child{border:0}
+.rcv{display:grid;grid-template-columns:1fr 86px;gap:8px;align-items:center}
 .sec{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:rgba(255,255,255,.7);display:grid;gap:4px}
 .st{font-size:11.5px;text-transform:uppercase;letter-spacing:1.1px;color:var(--mute);font-weight:700;margin-bottom:2px}
 .lk{color:var(--gold);font-weight:600;text-decoration:none}
@@ -197,13 +206,13 @@ async function load(){
   draw();
 }
 const can=k=>!D||!D.me||(D.me.perms||[]).includes(k);
-const tabs=[['dash','Dashboard'],['sell','Sell (In-Store)'],['prod','Products'],['ord','Orders'],['req','Requests'],['hist','History'],['rev','Reviews'],['acc','Accounts'],['off','Offers'],['set','Settings'],['staff','Staff']];
+const tabs=[['dash','Dashboard'],['sell','Sell (In-Store)'],['prod','Products'],['need','Requirement'],['ord','Orders'],['req','Requests'],['hist','History'],['rev','Reviews'],['acc','Accounts'],['off','Offers'],['set','Settings'],['staff','Staff']];
 function draw(){
   const pending=D.orders.filter(o=>o.status==='pending').length;
-  const vis=tabs.filter(([k])=>k==='staff'?(D.me&&D.me.owner):can(k));if(!vis.some(([k])=>k===tab))tab=vis[0]?vis[0][0]:'dash';
+  const vis=tabs.filter(([k])=>k==='staff'?(D.me&&D.me.owner):can(k==='need'?'prod':k));if(!vis.some(([k])=>k===tab))tab=vis[0]?vis[0][0]:'dash';
   const pendRev=(D.reviews||[]).filter(r=>r.status==='pending').length;
   const openReq=(D.requests||[]).filter(r=>r.status==='open').length;
-  const IC={dash:'<path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/>',sell:'<path d="M6 6h15l-1.5 9h-12zM6 6 5 3H2M9 20a1 1 0 1 0 0 .01M18 20a1 1 0 1 0 0 .01"/>',prod:'<path d="M9 2h6v4l2 3v11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9l2-3z"/>',ord:'<path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/>',req:'<path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',hist:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',rev:'<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',acc:'<path d="M3 20h18M6 20V10M12 20V4M18 20v-7"/>',off:'<path d="M20 12 12 20 3 11V3h8zM7.5 7.5h.01"/>',set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',staff:'<circle cx="9" cy="8" r="3.5"/><path d="M2 21v-1a6 6 0 0 1 12 0v1M16 4.5a3.5 3.5 0 0 1 0 7M22 21v-1a5 5 0 0 0-4-4.9"/>'};
+  const IC={dash:'<path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/>',sell:'<path d="M6 6h15l-1.5 9h-12zM6 6 5 3H2M9 20a1 1 0 1 0 0 .01M18 20a1 1 0 1 0 0 .01"/>',need:'<path d="M9 5h11M9 12h11M9 19h11M3.5 5l1 1 2-2M3.5 12l1 1 2-2M3.5 19l1 1 2-2"/>',prod:'<path d="M9 2h6v4l2 3v11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9l2-3z"/>',ord:'<path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/>',req:'<path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',hist:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',rev:'<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',acc:'<path d="M3 20h18M6 20V10M12 20V4M18 20v-7"/>',off:'<path d="M20 12 12 20 3 11V3h8zM7.5 7.5h.01"/>',set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',staff:'<circle cx="9" cy="8" r="3.5"/><path d="M2 21v-1a6 6 0 0 1 12 0v1M16 4.5a3.5 3.5 0 0 1 0 7M22 21v-1a5 5 0 0 0-4-4.9"/>'};
   const badge={ord:pending,req:openReq,rev:pendRev};
   const logo=D.settings.logo?`<img src="/api/img/${D.settings.logo}" alt="">`:`<span class="lg0">Z</span>`;
   const brand=`<div class="brand">${logo}<div><b>Zeen's Admin</b><small>${D.me&&!D.me.owner?esc(D.me.name):'Owner'}</small></div></div>`;
@@ -212,7 +221,7 @@ function draw(){
   <div class="content"><div class="mtop">${brand}<a class="btn g s" href="/" target="_blank" style="text-decoration:none">Shop</a><button class="btn g s" id="pw2" aria-label="Change password">🔑</button><button class="btn g s" id="lo2">Logout</button></div><main id="main"></main></div></div>`;
   document.querySelectorAll('#pw,#pw2').forEach(b=>b.onclick=pwForm);document.querySelectorAll('#lo,#lo2').forEach(b=>b.onclick=async()=>{await api('admin/logout','POST');D=null;showLogin()});
   document.querySelectorAll('.tab').forEach(b=>b.onclick=async()=>{tab=b.dataset.t;await load()});
-  ({dash,sell,prod,ord,req,hist,rev,acc,off,set,staff}[tab])();
+  ({dash,sell,prod,need,ord,req,hist,rev,acc,off,set,staff}[tab])();
 }
 const M=h=>{$('#main').innerHTML=h};
 function mobTables(){document.querySelectorAll('#main table').forEach(t=>{if(t.closest('.tblw')||t.dataset.rt)return;const ths=[...t.querySelectorAll('thead th')];if(ths.length<4){t.dataset.rt='0';return}
@@ -686,6 +695,74 @@ function req(){
       if(waOpen(r.phone,`Assalam o Alaikum ${r.name},\n${r.pname} (${r.size}) ab ${D.settings.shopName} mein available hai! Order karne ke liye: ${location.origin}`)){try{await api('admin/request/'+r.id,'POST',{status:'done'});await load()}catch(x){toast(x.message,1)}}return}
     const d=e.target.closest('[data-rdone]');if(d){try{await api('admin/request/'+d.dataset.rdone,'POST',{status:'done'});await load()}catch(x){toast(x.message,1)}return}
     const x=e.target.closest('[data-rdel]');if(x){if(!confirm('Delete this request?'))return;try{await api('admin/request/'+x.dataset.rdel,'DELETE');await load()}catch(y){toast(y.message,1)}}};
+}
+
+
+// ---------- requirement (restock) lists ----------
+const NSZ=['100ml','50ml','30ml','10ml'];
+let NS={};
+function needText(n){return `*${n.title}*\n`+n.lines.map((l,i)=>`${i+1}. ${l.pname} - ${l.size} x ${l.qty}${l.tester?' (Tester)':''}`).join('\n')+`\n\nTotal: ${n.lines.reduce((a,l)=>a+l.qty,0)} pcs`}
+function need(){
+  NS={};
+  const open=(D.needs||[]).filter(n=>n.status==='open'),done=(D.needs||[]).filter(n=>n.status==='done').slice(0,10);
+  const dt=x=>new Date(x).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+  M(`<h2>Requirement</h2><p class="mut">Jo maal mangwana hai uski list banao (100ml / 50ml / 30ml / 10ml). Maal aane par "Maal aa gaya" dabao: jo mila wo seedha perfume ke stock me add hoga aur baki list se delete.</p>
+  <div class="bar"><button class="btn" id="nn">+ Nayi list</button></div>
+  ${open.length?open.map(n=>`<div class="ncard"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-size:16px">${esc(n.title)}</b><span class="mut" style="font-size:12.5px">${dt(n.createdAt)} · ${esc(n.by||'')}</span></div>
+   <div style="margin:8px 0">${n.lines.map(l=>`<div class="nl"><span>${esc(l.pname)} <span class="pill">${esc(l.size)}</span>${l.tester?' <span class="pill pending">Tester</span>':''}</span><b>× ${l.qty}</b></div>`).join('')}</div>
+   <div class="mut" style="margin-bottom:8px">Total ${n.lines.reduce((a,l)=>a+l.qty,0)} pcs</div>
+   <div class="bar" style="margin:0"><button class="btn s" data-rc="${n.id}">✅ Maal aa gaya</button><button class="btn g s" data-wa="${n.id}">WhatsApp</button><button class="btn g s" data-cp="${n.id}">Copy</button><button class="btn g s" data-ed="${n.id}">Edit</button><button class="btn r s" data-dl="${n.id}">Delete</button></div></div>`).join(''):'<div class="panel mut">Koi khuli list nahi. "+ Nayi list" se banao.</div>'}
+  ${done.length?`<h3 style="margin:18px 0 8px">Pichli lists (done)</h3>`+done.map(n=>`<div class="ncard" style="box-shadow:none"><div style="display:flex;justify-content:space-between"><b>${esc(n.title)}</b><span class="mut" style="font-size:12.5px">${dt(n.doneAt)} · ${esc(n.doneBy||'')}</span></div>
+   ${n.lines.map(l=>`<div class="nl"><span>${esc(l.pname)} <span class="pill">${esc(l.size)}</span>${l.tester?' <span class="pill pending">Tester</span>':''}</span><b class="grn2">+${l.got}</b></div>`).join('')}</div>`).join(''):''}`);
+  $('#nn').onclick=()=>needEdit(null);
+  $('#main').onclick=async e=>{
+    const g=k=>{const b=e.target.closest('['+k+']');return b?open.find(n=>n.id===b.getAttribute(k)):null};
+    let n;
+    if(n=g('data-rc'))return needRecv(n);
+    if(n=g('data-ed'))return needEdit(n);
+    if(n=g('data-wa')){window.open('https://wa.me/?text='+encodeURIComponent(needText(n)),'_blank');return}
+    if(n=g('data-cp')){try{await navigator.clipboard.writeText(needText(n));toast('List copy ho gayi')}catch(x){toast('Copy nahi hui',1)}return}
+    if(n=g('data-dl')){if(!confirm('Ye list delete karein?'))return;try{await api('admin/need/'+n.id,'DELETE');await load()}catch(x){toast(x.message,1)}}};
+}
+function needEdit(n){
+  const rows=n?n.lines.map(l=>({...l})):[{pname:'',size:'50ml',qty:10}];
+  const lowAdd=()=>{const have=new Set(rows.map(r=>r.pid+'|'+r.size));D.products.forEach(p=>p.variants.forEach(v=>{const m=v.min==null?3:v.min,sz=NSZ.find(z=>z===String(v.size).toLowerCase().replace(/\s+/g,''));if(sz&&v.stock<=m&&!have.has(p.id+'|'+sz))rows.push({pid:p.id,pname:p.name,size:sz,qty:10})}))};
+  const draw_=()=>{
+    M(`<div class="bar" style="margin-bottom:6px"><button class="btn g s" id="nb">← Wapis</button></div><h2>${n?'List edit karo':'Nayi requirement list'}</h2>
+    <label>List ka naam<input id="nt" maxlength="60" value="${esc(n?n.title:'Requirement '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'}))}"></label>
+    <datalist id="dlp">${D.products.map(p=>`<option value="${esc(p.name)}">`).join('')}</datalist>
+    <div id="nr" style="margin-top:10px">${rows.map((r,i)=>`<div class="nrow"><input class="rp" list="dlp" placeholder="Perfume ka naam (list se chuno)" value="${esc(r.pname)}" data-i="${i}"><select class="rs" data-i="${i}">${NSZ.map(z=>`<option ${r.size===z?'selected':''}>${z}</option>`).join('')}</select><input class="rq" type="number" inputmode="numeric" min="1" value="${r.qty}" data-i="${i}" placeholder="Qty"><label class="tk"><input type="checkbox" class="rt" data-i="${i}" ${r.tester?'checked':''}>Tester</label><button class="btn g nrx" data-x="${i}" aria-label="Hatao">✕</button></div>`).join('')}</div>
+    <div class="bar"><button class="btn g" id="na">+ Aur perfume</button><button class="btn g" id="nlow">Kam stock wale add karo</button></div>
+    <div class="bar"><button class="btn" id="nsv" style="flex:1">Save list</button></div>`);
+    $('#nb').onclick=()=>need();
+    $('#nt').oninput=()=>{};
+    const sync=()=>{document.querySelectorAll('.nrow').forEach((el,i)=>{const r=rows[i];r.pname=el.querySelector('.rp').value;r.size=el.querySelector('.rs').value;r.qty=+el.querySelector('.rq').value;r.tester=el.querySelector('.rt').checked})};
+    $('#na').onclick=()=>{sync();rows.push({pname:'',size:'50ml',qty:10});draw_();const a=document.querySelectorAll('.rp');a[a.length-1].focus()};
+    $('#nlow').onclick=()=>{sync();const b=rows.length;lowAdd();if(rows.length===b)toast('Kam stock wala koi nahi mila');draw_()};
+    $('#nr').onclick=e=>{const x=e.target.closest('[data-x]');if(!x)return;sync();rows.splice(+x.dataset.x,1);if(!rows.length)rows.push({pname:'',size:'50ml',qty:10});draw_()};
+    $('#nsv').onclick=async()=>{sync();const title=$('#nt').value;const lines=[];
+      for(const r of rows){if(!r.pname.trim()&&!(r.qty>0))continue;const p=D.products.find(x=>x.name.toLowerCase()===r.pname.trim().toLowerCase());if(!p)return toast('"'+r.pname+'" naam list me nahi mila, list se chuno',1);if(!(r.qty>=1))return toast(r.pname+': quantity daalein',1);lines.push({id:r.id,pid:p.id,size:r.size,qty:r.qty,tester:!!r.tester})}
+      if(!lines.length)return toast('Kam az kam ek perfume daalein',1);
+      try{await api('admin/need','POST',{id:n&&n.id,title,lines});toast('List save ho gayi');await load()}catch(x){toast(x.message,1)}};
+  };
+  draw_();
+}
+function needRecv(n){
+  const hasSize=l=>{const p=D.products.find(x=>x.id===l.pid);return p&&p.variants.some(v=>String(v.size).toLowerCase().replace(/\s+/g,'')===l.size)};
+  M(`<div class="bar" style="margin-bottom:6px"><button class="btn g s" id="rb">← Wapis</button></div><h2>Maal aa gaya: ${esc(n.title)}</h2>
+  <p class="mut">Har perfume ke samne jitna asal me mila wo likho. 0 likha to wo list se delete ho jayega. Done dabane par jo mila wo stock me add ho jayega.</p>
+  ${n.lines.map(l=>`<div class="ncard"><div class="rcv"><div><b>${esc(l.pname)}</b> <span class="pill">${esc(l.size)}</span>${l.tester?' <span class="pill pending">Tester</span>':''}<div class="mut" style="font-size:12.5px">Mangwaya: ${l.qty}</div></div><input type="number" inputmode="numeric" min="0" class="gq" data-l="${l.id}" value="${l.qty}" aria-label="Mila"></div>
+   <div class="bar" style="margin:8px 0 0"><button class="btn g s" data-all="${l.id}" data-q="${l.qty}">Poora mila</button><button class="btn g s" data-all="${l.id}" data-q="0">Nahi mila</button></div>
+   ${hasSize(l)?'':`<div class="sec" style="margin-top:8px"><span class="mut">Ye size is perfume me pehle nahi tha, naya size ban jayega. Price daalein:</span><div class="rcv"><input type="number" inputmode="numeric" class="gp" data-l="${l.id}" placeholder="Bechne ki price (Rs)"><input type="number" inputmode="numeric" class="gc" data-l="${l.id}" placeholder="Cost" style="${can('acc')?'':'display:none'}"></div></div>`}</div>`).join('')}
+  <div class="bar"><button class="btn" id="rd" style="flex:1">Done: jo mila add karo, baki delete</button></div>`);
+  $('#rb').onclick=()=>need();
+  $('#main').onclick=e=>{const b=e.target.closest('[data-all]');if(b)document.querySelector('.gq[data-l="'+b.dataset.all+'"]').value=b.dataset.q};
+  $('#rd').onclick=async()=>{const got={},prices={};let tot=0;
+    document.querySelectorAll('.gq').forEach(i=>{const q=Math.max(0,Math.round(+i.value||0));got[i.dataset.l]=q;tot+=q});
+    document.querySelectorAll('.gp').forEach(i=>{const id=i.dataset.l;prices[id]={price:+i.value,cost:+(document.querySelector('.gc[data-l="'+id+'"]')||{}).value||0}});
+    if(!tot)return toast('Kuch bhi mila nahi likha. Quantity daalein ya list delete karein',1);
+    if(!confirm(`${tot} pcs stock me add honge. Jo 0 hai wo list se hat jayega. Theek hai?`))return;
+    try{const r=await api('admin/need/'+n.id+'/receive','POST',{got,prices});toast('Stock add ho gaya ('+r.added+' items)');await load()}catch(x){toast(x.message,1)}};
 }
 
 // ---------- in-store sell ----------
