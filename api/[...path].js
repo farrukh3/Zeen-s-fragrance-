@@ -567,9 +567,26 @@ module.exports = async (req, res) => {
         const [settings, products] = await Promise.all([getSettings(), getProducts()]);
         const lines = L.buildLines(body.items, products, settings, { onlyActive: false });
         const t = L.totals(lines, settings, null, body.discount, true);
+        const call = body.call === true; // phone / home-delivery order made by staff
+        let callInfo = null;
+        if (call) {
+          const phone = str(body.customerPhone, 20), name = str(body.customerName, 80), address = str(body.address, 200);
+          if (!name) return send(400, { error: 'Delivery order ke liye customer ka naam likhein' });
+          if (phone.replace(/\D/g, '').length < 10) return send(400, { error: 'Delivery order ke liye sahi phone number likhein' });
+          if (!address) return send(400, { error: 'Delivery order ke liye address likhein' });
+          const pay = ['COD', 'Bank Transfer', 'Easypaisa', 'JazzCash'].includes(body.payment) ? body.payment : 'COD';
+          const dc = Math.max(0, Math.min(5000, Math.round(+body.dc) || 0));
+          callInfo = { phone, name, address, city: str(body.city, 60), pay, dc, paid: pay !== 'COD' && body.paid === true };
+          t.delivery = dc; t.total = t.total + dc;
+        }
         L.applyStock(products, lines, -1);
         const { no, id } = await nextOrderId();
-        const order = {
+        const order = callInfo ? {
+          id, no, token: newToken(), createdAt: new Date().toISOString(), source: 'online', channel: 'call', by: au.name, status: 'pending', dcSet: true,
+          payment: callInfo.pay, paymentRef: '', proof: false, paid: callInfo.paid,
+          customer: { name: callInfo.name, phone: callInfo.phone, city: callInfo.city, address: callInfo.address, note: str(body.note, 200) },
+          lines, ...t, coupon: '',
+        } : {
           id, no, token: newToken(), createdAt: new Date().toISOString(), source: 'store', by: au.name, status: 'delivered', dcSet: true,
           payment: ['Cash', 'Card', 'Bank Transfer', 'Easypaisa', 'JazzCash'].includes(body.payment) ? body.payment : 'Cash', paid: true,
           customer: { name: str(body.customerName, 80) || 'Walk-in', phone: str(body.customerPhone, 20), city: '', address: '', note: '' },
