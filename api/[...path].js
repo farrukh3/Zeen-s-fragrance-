@@ -306,6 +306,74 @@ module.exports = async (req, res) => {
         return send(200, { ok: true });
       }
 
+      // ---- Requirement (restock) lists: banao -> maal aaye to receive karo -> stock khud add, baki delete ----
+      const NEED_SIZES = ['100ml', '50ml', '30ml', '10ml'];
+      const normSize = (x) => String(x || '').toLowerCase().replace(/\s+/g, '');
+      if (b === 'need' && method === 'POST' && !c) {
+        need('prod');
+        const body = await readBody(req);
+        const products = await getProducts();
+        const lines = (Array.isArray(body.lines) ? body.lines : []).slice(0, 200).map((l) => {
+          const p = products.find((x) => x.id === str(l.pid, 40));
+          const size = NEED_SIZES.find((z) => z === normSize(l.size));
+          const qty = Math.round(+l.qty);
+          if (!p || !size || !(qty >= 1 && qty <= 10000)) return null;
+          return { id: str(l.id, 20) || 'l_' + crypto.randomBytes(4).toString('hex'), pid: p.id, pname: p.name, size, qty, tester: !!l.tester };
+        }).filter(Boolean);
+        if (!lines.length) return send(400, { error: 'Kam az kam ek perfume, size aur quantity daalein' });
+        const list = (await db.get('needs')) || [];
+        const i = list.findIndex((x) => x.id === str(body.id, 40));
+        if (i >= 0 && list[i].status !== 'open') return send(400, { error: 'Ye list pehle hi done ho chuki hai' });
+        const rec = { id: i >= 0 ? list[i].id : 'n_' + crypto.randomBytes(5).toString('hex'), title: str(body.title, 60) || 'Requirement', status: 'open', createdAt: i >= 0 ? list[i].createdAt : new Date().toISOString(), by: i >= 0 ? list[i].by : au.name, lines };
+        if (i >= 0) list[i] = rec; else list.unshift(rec);
+        await db.set('needs', list.slice(0, 60));
+        return send(200, { ok: true, id: rec.id });
+      }
+      if (b === 'need' && method === 'DELETE' && c) {
+        need('prod');
+        const list = (await db.get('needs')) || [];
+        await db.set('needs', list.filter((x) => x.id !== c));
+        return send(200, { ok: true });
+      }
+      if (b === 'need' && method === 'POST' && c && parts[3] === 'receive') {
+        need('prod');
+        const body = await readBody(req);
+        const list = (await db.get('needs')) || [];
+        const n = list.find((x) => x.id === c);
+        if (!n) return send(404, { error: 'List nahi mili' });
+        if (n.status !== 'open') return send(400, { error: 'Ye list pehle hi done ho chuki hai' });
+        const products = await getProducts();
+        const got = body.got || {}, pr = body.prices || {};
+        const adds = [];
+        for (const l of n.lines) {
+          const q = Math.max(0, Math.min(10000, Math.round(+got[l.id] || 0)));
+          if (!q) continue;
+          const p = products.find((x) => x.id === l.pid);
+          if (!p) return send(400, { error: l.pname + ' product ab maujood nahi' });
+          let v = p.variants.find((x) => normSize(x.size) === l.size);
+          if (!v) {
+            const price = Math.round(+(pr[l.id] && pr[l.id].price));
+            if (!(price > 0)) return send(400, { error: `${l.pname} ${l.size}: ye size pehle nahi tha, price daalein` });
+            const cost = au.perms.has('acc') ? Math.max(0, Math.round(+(pr[l.id] && pr[l.id].cost) || 0)) : 0;
+            v = { size: l.size, price, cost, discount: 0, stock: 0, min: 3 };
+            p.variants.push(v);
+          }
+          adds.push({ l, p, v, q });
+        }
+        if (!adds.length) return send(400, { error: 'Kuch bhi mila nahi likha, pehle quantity daalein (ya list delete kar dein)' });
+        const at = new Date().toISOString(), log = (await db.get('stocklog')) || [];
+        for (const a of adds) {
+          a.v.stock += a.q;
+          log.unshift({ at, by: au.name, pid: a.p.id, pname: a.p.name, size: a.v.size, delta: a.q, after: a.v.stock, reason: 'Requirement: ' + n.title + (a.l.tester ? ' (Tester)' : '') });
+        }
+        n.lines = adds.map((a) => ({ ...a.l, got: a.q }));
+        n.status = 'done'; n.doneAt = at; n.doneBy = au.name;
+        await db.set('products', products);
+        await db.set('stocklog', log.slice(0, 1000));
+        await db.set('needs', list);
+        return send(200, { ok: true, added: adds.length });
+      }
+
       if (method === 'GET' && b === 'data') {
         const [settings, products0, orders0, coupons, expenses0, requests, reviews, staff] = await Promise.all([getSettings(), getProducts(), getOrders(), getCoupons(), getExpenses(), getRequests(), getReviews(), getStaff()]);
         let products = products0, orders = orders0;
@@ -318,8 +386,9 @@ module.exports = async (req, res) => {
           orders = orders.map(L.stripCost);
         }
         const stocklog = au.perms.has('prod') ? ((await db.get('stocklog')) || []).slice(0, 600) : [];
+        const needs = au.perms.has('prod') ? ((await db.get('needs')) || []) : [];
         return send(200, {
-          stocklog, settings, products, orders, coupons, expenses: seeCost ? expenses0 : [], requests, reviews: au.perms.has('rev') ? reviews : [],
+          stocklog, needs, settings, products, orders, coupons, expenses: seeCost ? expenses0 : [], requests, reviews: au.perms.has('rev') ? reviews : [],
           staff: au.owner ? staff.map(({ salt, hash, ...x }) => x) : [],
           me: { owner: au.owner, name: au.name, perms: [...au.perms] },
         });
