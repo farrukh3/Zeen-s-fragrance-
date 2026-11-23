@@ -209,13 +209,13 @@ async function load(){
   draw();
 }
 const can=k=>!D||!D.me||(D.me.perms||[]).includes(k);
-const tabs=[['dash','Dashboard'],['sell','Sell (In-Store)'],['prod','Products'],['need','Requirement'],['ord','Orders'],['baq','Baqaya'],['req','Requests'],['hist','History'],['rev','Reviews'],['acc','Accounts'],['off','Offers'],['set','Settings'],['staff','Staff']];
+const tabs=[['dash','Dashboard'],['sell','Sell (In-Store)'],['prod','Products'],['need','Requirement'],['ord','Orders'],['baq','Baqaya'],['deal','Deals'],['req','Requests'],['hist','History'],['rev','Reviews'],['acc','Accounts'],['off','Offers'],['set','Settings'],['staff','Staff']];
 function draw(){
   const pending=D.orders.filter(o=>o.status==='pending').length;
-  const vis=tabs.filter(([k])=>k==='staff'?(D.me&&D.me.owner):can(k==='need'?'prod':k==='baq'?'ord':k));if(!vis.some(([k])=>k===tab))tab=vis[0]?vis[0][0]:'dash';
+  const vis=tabs.filter(([k])=>k==='staff'?(D.me&&D.me.owner):can(k==='need'?'prod':k==='baq'?'ord':k==='deal'?'off':k));if(!vis.some(([k])=>k===tab))tab=vis[0]?vis[0][0]:'dash';
   const pendRev=(D.reviews||[]).filter(r=>r.status==='pending').length;
   const openReq=(D.requests||[]).filter(r=>r.status==='open').length;
-  const IC={dash:'<path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/>',sell:'<path d="M6 6h15l-1.5 9h-12zM6 6 5 3H2M9 20a1 1 0 1 0 0 .01M18 20a1 1 0 1 0 0 .01"/>',baq:'<path d="M12 2v20M17 6.5H9.5a3 3 0 0 0 0 6h5a3 3 0 0 1 0 6H6"/>',need:'<path d="M9 5h11M9 12h11M9 19h11M3.5 5l1 1 2-2M3.5 12l1 1 2-2M3.5 19l1 1 2-2"/>',prod:'<path d="M9 2h6v4l2 3v11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9l2-3z"/>',ord:'<path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/>',req:'<path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',hist:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',rev:'<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',acc:'<path d="M3 20h18M6 20V10M12 20V4M18 20v-7"/>',off:'<path d="M20 12 12 20 3 11V3h8zM7.5 7.5h.01"/>',set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',staff:'<circle cx="9" cy="8" r="3.5"/><path d="M2 21v-1a6 6 0 0 1 12 0v1M16 4.5a3.5 3.5 0 0 1 0 7M22 21v-1a5 5 0 0 0-4-4.9"/>'};
+  const IC={dash:'<path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/>',sell:'<path d="M6 6h15l-1.5 9h-12zM6 6 5 3H2M9 20a1 1 0 1 0 0 .01M18 20a1 1 0 1 0 0 .01"/>',baq:'<path d="M12 2v20M17 6.5H9.5a3 3 0 0 0 0 6h5a3 3 0 0 1 0 6H6"/>',deal:'<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01"/>',need:'<path d="M9 5h11M9 12h11M9 19h11M3.5 5l1 1 2-2M3.5 12l1 1 2-2M3.5 19l1 1 2-2"/>',prod:'<path d="M9 2h6v4l2 3v11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9l2-3z"/>',ord:'<path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/>',req:'<path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',hist:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',rev:'<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',acc:'<path d="M3 20h18M6 20V10M12 20V4M18 20v-7"/>',off:'<path d="M20 12 12 20 3 11V3h8zM7.5 7.5h.01"/>',set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',staff:'<circle cx="9" cy="8" r="3.5"/><path d="M2 21v-1a6 6 0 0 1 12 0v1M16 4.5a3.5 3.5 0 0 1 0 7M22 21v-1a5 5 0 0 0-4-4.9"/>'};
   const dueN=new Set(D.orders.filter(o=>dueOf(o)>0).map(ckey)).size;
   const badge={ord:pending,baq:dueN,req:openReq,rev:pendRev};
   const logo=D.settings.logo?`<img src="/api/img/${D.settings.logo}" alt="">`:`<span class="lg0">Z</span>`;
@@ -225,7 +225,7 @@ function draw(){
   <div class="content"><div class="mtop">${brand}<a class="btn g s" href="/" target="_blank" style="text-decoration:none">Shop</a><button class="btn g s" id="pw2" aria-label="Change password">🔑</button><button class="btn g s" id="lo2">Logout</button></div><main id="main"></main></div></div>`;
   document.querySelectorAll('#pw,#pw2').forEach(b=>b.onclick=pwForm);document.querySelectorAll('#lo,#lo2').forEach(b=>b.onclick=async()=>{await api('admin/logout','POST');D=null;showLogin()});
   document.querySelectorAll('.tab').forEach(b=>b.onclick=async()=>{tab=b.dataset.t;await load()});
-  ({dash,sell,prod,need,ord,baq,req,hist,rev,acc,off,set,staff}[tab])();
+  ({dash,sell,prod,need,ord,baq,deal,req,hist,rev,acc,off,set,staff}[tab])();
 }
 const M=h=>{$('#main').innerHTML=h};
 function mobTables(){document.querySelectorAll('#main table').forEach(t=>{if(t.closest('.tblw')||t.dataset.rt)return;const ths=[...t.querySelectorAll('thead th')];if(ths.length<4){t.dataset.rt='0';return}
@@ -809,6 +809,68 @@ function needRecv(n){
     try{const r=await api('admin/need/'+n.id+'/receive','POST',{got,prices,costs,updateCost:!!($('#gucost')&&$('#gucost').checked)});await load();const fl=D.orders.filter(canFill).length;toast('Stock add ho gaya ('+r.added+' items)'+(fl?`. ${fl} pending order ab complete ho sakte hain (Orders me dekhein)`:''))}catch(x){toast(x.message,1)}};
 }
 
+
+
+// ---------- deals (time-limited bundle offers) ----------
+const dFin=(p,v)=>Math.round(v.price*(1-Math.max(+v.discount||0,D.settings.globalDiscount.pct||0)/100));
+const dLoc=t=>{const d=new Date(t),z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`};
+const dLeft=ms=>{const h=Math.floor(ms/36e5),m=Math.floor(ms/6e4)%60;return h>=48?Math.floor(h/24)+' din '+(h%24)+' ghante':h+' ghante '+m+' min'};
+function deal(){
+  const now=Date.now();
+  const st=d=>!d.active?['Band','cancelled']:now<Date.parse(d.start)?['Upcoming','pending']:now>Date.parse(d.end)?['Khatam','cancelled']:['🔴 Live','delivered'];
+  const dt=x=>new Date(x).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  const nm=i=>{const p=D.products.find(x=>x.id===i.pid);return (p?p.name:'?')+' '+i.size+(i.qty>1?' ×'+i.qty:'')};
+  M(`<h2>Deals</h2><p class="mut">Thode waqt ki special offer: kuch perfumes ek hi price me (jaise Friday Special). Shop kholte hi customer ko popup aata hai aur waqt khatam hote hi offer khud band ho jata hai.</p>
+  <div class="bar"><button class="btn" id="dn">+ Nayi deal</button></div>
+  ${(D.deals||[]).length?D.deals.map(d=>{const [t,c]=st(d);return `<div class="ncard"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-size:16px">${esc(d.title)}</b><span class="pill ${c}">${t}</span></div>
+   <div class="mut" style="font-size:13.5px;margin:4px 0">${d.items.map(nm).map(esc).join(' + ')}</div>
+   <div><b style="font-size:18px">${rs(d.price)}</b> <span class="mut">· ${dt(d.start)} se ${dt(d.end)}</span></div>
+   ${t==='🔴 Live'?`<div class="mut" style="font-size:13px">Khatam hone me: ${dLeft(Date.parse(d.end)-now)}</div>`:''}
+   <div class="bar" style="margin:10px 0 0"><button class="btn g s" data-de="${d.id}">Edit</button><button class="btn g s" data-dt="${d.id}">${d.active?'Band karo':'Chalu karo'}</button><button class="btn r s" data-dd="${d.id}">Delete</button></div></div>`}).join(''):'<div class="panel mut">Abhi koi deal nahi.</div>'}`);
+  $('#dn').onclick=()=>dealEdit(null);
+  $('#main').onclick=async e=>{const g=k=>{const b=e.target.closest('['+k+']');return b?D.deals.find(x=>x.id===b.getAttribute(k)):null};let d;
+    if(d=g('data-de'))return dealEdit(d);
+    if(d=g('data-dt')){try{await api('admin/deal','POST',{...d,active:!d.active});await load()}catch(x){toast(x.message,1)}return}
+    if(d=g('data-dd')){if(!confirm('Ye deal delete karein?'))return;try{await api('admin/deal/'+d.id,'DELETE');await load()}catch(x){toast(x.message,1)}}};
+}
+function dealEdit(d){
+  const rows=d?d.items.map(i=>({name:(D.products.find(p=>p.id===i.pid)||{}).name||'',size:i.size,qty:i.qty})):[{name:'',size:'',qty:1}];
+  const F={img:d?d.image||'':'',t:d?d.title:'',sb:d?d.subtitle:'',pr:d?d.price:'',s:d?dLoc(d.start):dLoc(Date.now()),e:d?dLoc(d.end):dLoc(Date.now()+864e5)};
+  const saveF=()=>{const g=i=>document.getElementById(i);if(g('dtl')){F.t=g('dtl').value;F.sb=g('dsb').value;F.pr=g('dpr').value;F.s=g('dst').value;F.e=g('den').value}};
+  const draw_=()=>{
+    M(`<div class="bar" style="margin-bottom:6px"><button class="btn g s" id="db">← Wapis</button></div><h2>${d?'Deal edit karo':'Nayi deal'}</h2>
+    <label>Deal ka naam<input id="dtl" maxlength="60" placeholder="Friday Special Offer" value="${esc(F.t)}"></label>
+    <label>Chhoti line (optional)<input id="dsb" maxlength="100" placeholder="Grab this amazing deal" value="${esc(F.sb)}"></label>
+    <datalist id="dlp2">${D.products.map(p=>`<option value="${esc(p.name)}">`).join('')}</datalist>
+    <div class="st" style="margin:12px 0 6px;font-weight:700">Deal me kaun se perfume</div>
+    <div id="dr">${rows.map((r,i)=>{const p=D.products.find(x=>x.name.toLowerCase()===r.name.trim().toLowerCase());return `<div class="nrow"><input class="rp" list="dlp2" placeholder="Perfume ka naam (list se chuno)" value="${esc(r.name)}" data-i="${i}"><select class="rs" data-i="${i}">${p?p.variants.map(v=>`<option ${v.size===r.size?'selected':''}>${esc(v.size)}</option>`).join(''):'<option value="">Size</option>'}</select><select class="rq" data-i="${i}">${[1,2,3,4,5].map(n=>`<option ${n===r.qty?'selected':''}>${n}</option>`).join('')}</select><span></span><button class="btn g nrx" data-x="${i}" aria-label="Hatao">✕</button></div>`}).join('')}</div>
+    <div class="bar"><button class="btn g" id="da">+ Aur perfume</button></div>
+    <div class="st" style="margin:12px 0 6px;font-weight:700">Poster / tasveer (optional)</div>
+    <div class="sec" style="margin:0 0 8px"><span class="mut">Agar apni banai hui deal ki image (poster) lagayenge to customer ko popup me wahi poori image dikhegi, neeche countdown aur button ke saath. Na lagayein to site khud perfume aur price ka card bana degi.</span>
+    ${F.img?`<img src="/api/img/${F.img}" alt="" style="width:100%;max-width:320px;border-radius:12px;display:block;margin:8px 0;border:1px solid var(--line)"><button class="btn g s" id="dpx">Image hatao</button>`:`<label class="btn g s" style="display:inline-block;margin-top:8px;cursor:pointer">📷 Image chunein<input id="dpf" type="file" accept="image/*" style="display:none"></label>`}</div>
+    <label>Deal price (Rs.) jo customer dega<input id="dpr" type="number" inputmode="numeric" min="1" value="${esc(F.pr)}" placeholder="3999"></label>
+    <div class="panel" id="dsum" style="margin:8px 0"></div>
+    <div class="g2"><label>Shuru<input id="dst" type="datetime-local" value="${F.s}"></label><label>Khatam<input id="den" type="datetime-local" value="${F.e}"></label></div>
+    <div class="bar" style="margin-top:2px"><button class="btn g s" data-end="mid">Aaj raat 12 baje</button><button class="btn g s" data-end="24">24 ghante</button><button class="btn g s" data-end="72">3 din</button><button class="btn g s" data-end="168">7 din</button></div>
+    <div class="bar"><button class="btn" id="dsv" style="flex:1">Save deal</button></div>`);
+    const sync=()=>{saveF();document.querySelectorAll('#dr .nrow').forEach((el,i)=>{rows[i]={name:el.querySelector('.rp').value,size:el.querySelector('.rs').value,qty:+el.querySelector('.rq').value}})};
+    const items=()=>rows.map(r=>{const p=D.products.find(x=>x.name.toLowerCase()===r.name.trim().toLowerCase()),v=p&&p.variants.find(x=>x.size===r.size);return p&&v?{pid:p.id,size:v.size,qty:r.qty,p,v}:null}).filter(Boolean);
+    const sum=()=>{const it=items(),norm=it.reduce((a,i)=>a+dFin(i.p,i.v)*i.qty,0),cost=it.reduce((a,i)=>a+(+i.v.cost||0)*i.qty,0),pr=+$('#dpr').value||0;
+      $('#dsum').innerHTML=it.length?`<div class="row"><span>Normal price (sab ka)</span><b>${rs(norm)}</b></div>${pr?`<div class="row"><span>Customer ki bachat</span><b class="${pr<norm?'grn2':'low'}">${pr<norm?rs(norm-pr)+' ('+Math.round((norm-pr)/norm*100)+'%)':'Deal price normal se kam nahi!'}</b></div>`:''}${can('acc')&&pr?`<div class="row"><span>Cost ${rs(cost)} · Profit</span><b class="${pr-cost>=0?'grn2':'low'}">${rs(pr-cost)}</b></div>`:''}`:'<span class="mut">Perfume chunne par hisaab yahan dikhega.</span>'};
+    $('#db').onclick=()=>deal();
+    const pf=$('#dpf');if(pf)pf.onchange=async()=>{const f=pf.files[0];if(!f)return;saveF();try{let q=.88,u;for(;q>.45;q-=.08){u=await resize(f,1100,'image/jpeg',q);if(u.length<850000)break}const r=await api('admin/image','POST',{dataUrl:u});F.img=r.id;sync();draw_()}catch(x){toast(x.message,1)}};
+    const px=$('#dpx');if(px)px.onclick=()=>{sync();F.img='';draw_()};
+    $('#dr').addEventListener('change',e=>{sync();if(e.target.classList.contains('rp')){const r=rows[+e.target.dataset.i],p=D.products.find(x=>x.name.toLowerCase()===r.name.trim().toLowerCase());r.size=p?p.variants[0].size:'';draw_();return}sum()});
+    $('#dr').addEventListener('input',()=>{sync();sum()});$('#dpr').addEventListener('input',sum);
+    $('#dr').onclick=e=>{const x=e.target.closest('[data-x]');if(!x)return;sync();rows.splice(+x.dataset.x,1);if(!rows.length)rows.push({name:'',size:'',qty:1});draw_()};
+    $('#da').onclick=()=>{sync();rows.push({name:'',size:'',qty:1});draw_()};
+    document.querySelectorAll('[data-end]').forEach(b=>b.onclick=()=>{const s=new Date($('#dst').value||Date.now());let e;if(b.dataset.end==='mid'){e=new Date();e.setHours(23,59,0,0);if(e<=s)e.setDate(e.getDate()+1)}else e=new Date(s.getTime()+(+b.dataset.end)*36e5);$('#den').value=dLoc(e)});
+    $('#dsv').onclick=async()=>{sync();const it=items();if(!it.length)return toast('Kam az kam ek perfume chunein',1);
+      try{await api('admin/deal','POST',{id:d&&d.id,image:F.img,active:d?d.active:true,title:$('#dtl').value,subtitle:$('#dsb').value,price:+$('#dpr').value,start:new Date($('#dst').value).toISOString(),end:new Date($('#den').value).toISOString(),items:it.map(i=>({pid:i.pid,size:i.size,qty:i.qty}))});toast('Deal save ho gayi');await load()}catch(x){toast(x.message,1)}};
+    sum();
+  };
+  draw_();
+}
 
 // ---------- baqaya (udhaar) ----------
 let BQ={q:''};
