@@ -279,6 +279,31 @@ module.exports = async (req, res) => {
       const au = await getAuth(req);
       if (!au) return send(401, { error: 'Login zaroori hai' });
       const need = (p) => { if (!au.perms.has(p)) throw L.httpErr(403, 'Is kaam ki ijazat nahi hai'); };
+      const NEED_SIZES = ['100ml', '50ml', '30ml', '10ml'];
+      const normSize = (x) => String(x || '').toLowerCase().replace(/\s+/g, '');
+      // keeps the auto "Customer orders (backorder)" requirement list in step with orders waiting for stock
+      const needSync = async (pid, pname, size, delta) => {
+        const sz = normSize(size);
+        if (!NEED_SIZES.includes(sz) || !delta) return;
+        const list = (await db.get('needs')) || [];
+        let n = list.find((x) => x.auto && x.status === 'open');
+        if (!n) {
+          if (delta < 0) return;
+          n = { id: 'n_' + crypto.randomBytes(5).toString('hex'), title: 'Customer orders (backorder)', status: 'open', createdAt: new Date().toISOString(), by: au.name, auto: true, lines: [] };
+          list.unshift(n);
+        }
+        let l = n.lines.find((x) => x.pid === pid && x.size === sz && !x.tester);
+        if (!l) {
+          if (delta < 0) return;
+          l = { id: 'l_' + crypto.randomBytes(4).toString('hex'), pid, pname, size: sz, qty: 0, tester: false };
+          n.lines.push(l);
+        }
+        l.qty += delta;
+        if (l.qty <= 0) n.lines = n.lines.filter((x) => x !== l);
+        if (!n.lines.length) list.splice(list.indexOf(n), 1);
+        await db.set('needs', list.slice(0, 60));
+      };
+      const backSync = async (lines, sign) => { for (const l of lines) if (l.back > 0) await needSync(l.pid, l.name, l.size, sign * l.back); };
       const payRep = (o) => (o.payments || []).reduce((a, x) => a + x.amount, 0);
       const dueOf = (o) => (o.udhaar && o.status !== 'cancelled' ? Math.max(0, o.total - payRep(o)) : 0);
       const custKey = (o) => {
@@ -321,8 +346,6 @@ module.exports = async (req, res) => {
       }
 
       // ---- Requirement (restock) lists: banao -> maal aaye to receive karo -> stock khud add, baki delete ----
-      const NEED_SIZES = ['100ml', '50ml', '30ml', '10ml'];
-      const normSize = (x) => String(x || '').toLowerCase().replace(/\s+/g, '');
       if (b === 'need' && method === 'POST' && !c) {
         need('prod');
         const body = await readBody(req);
@@ -338,7 +361,7 @@ module.exports = async (req, res) => {
         const list = (await db.get('needs')) || [];
         const i = list.findIndex((x) => x.id === str(body.id, 40));
         if (i >= 0 && list[i].status !== 'open') return send(400, { error: 'Ye list pehle hi done ho chuki hai' });
-        const rec = { id: i >= 0 ? list[i].id : 'n_' + crypto.randomBytes(5).toString('hex'), title: str(body.title, 60) || 'Requirement', status: 'open', createdAt: i >= 0 ? list[i].createdAt : new Date().toISOString(), by: i >= 0 ? list[i].by : au.name, lines };
+        const rec = { auto: i >= 0 ? !!list[i].auto : false, id: i >= 0 ? list[i].id : 'n_' + crypto.randomBytes(5).toString('hex'), title: str(body.title, 60) || 'Requirement', status: 'open', createdAt: i >= 0 ? list[i].createdAt : new Date().toISOString(), by: i >= 0 ? list[i].by : au.name, lines };
         if (i >= 0) list[i] = rec; else list.unshift(rec);
         await db.set('needs', list.slice(0, 60));
         return send(200, { ok: true, id: rec.id });
@@ -511,16 +534,43 @@ module.exports = async (req, res) => {
         const o = orders.find((x) => x.id === c);
         if (!o) return send(404, { error: 'Order nahi mila' });
         if (o.status === 'cancelled') return send(400, { error: 'Cancelled order dobara change nahi ho sakta' });
+        if (o.backorder && (status === 'shipped' || status === 'delivered')) return send(400, { error: 'Is order ka kuch maal abhi aaya nahi. Pehle "Maal aa gaya, complete karo" dabayein.' });
         if (status === 'cancelled') {
           const products = await getProducts();
-          L.applyStock(products, o.lines, +1);
+          L.applyStock(products, L.physLines(o.lines), +1);
           await db.set('products', products);
+          await backSync(o.lines, -1);
         }
         o.status = status;
         if (status === 'cancelled') { o.cancelReason = str(body.reason, 200); o.cancelledAt = new Date().toISOString(); }
         if (status === 'delivered' && o.payment === 'COD' && !o.udhaar) o.paid = true;
         await db.set('orders', orders);
         return send(200, { ok: true });
+      }
+
+      // stock has arrived: move waiting (backorder) quantities of this order out of stock, as much as is available
+      if (method === 'POST' && b === 'order' && c && parts[3] === 'fulfill') {
+        need('ord');
+        const orders = await getOrders();
+        const o = orders.find((x) => x.id === c);
+        if (!o || !o.backorder || o.status === 'cancelled') return send(404, { error: 'Is order me koi maal pending nahi' });
+        const products = await getProducts();
+        let took = 0;
+        for (const l of o.lines) {
+          if (!(l.back > 0)) continue;
+          const p = products.find((x) => x.id === l.pid), v = p && p.variants.find((x) => x.size === l.size);
+          const t = v ? Math.min(l.back, Math.max(0, v.stock)) : 0;
+          if (t <= 0) continue;
+          v.stock -= t; l.back -= t; took += t;
+          if (l.back <= 0) delete l.back;
+          await needSync(l.pid, l.name, l.size, -t);
+        }
+        if (!took) return send(400, { error: 'Abhi stock nahi aaya. Pehle Requirement se maal receive karein ya stock add karein.' });
+        const left = o.lines.reduce((a, l) => a + (l.back || 0), 0);
+        if (!left) o.backorder = false;
+        await db.set('products', products);
+        await db.set('orders', orders);
+        return send(200, { ok: true, took, left });
       }
 
       // partial return: some items come back, stock goes back, totals are recalculated
@@ -537,11 +587,17 @@ module.exports = async (req, res) => {
         const newLines = o.lines.map((l, i) => {
           const w = want.find((x) => x.i === i);
           const r = w ? Math.min(w.q, l.qty) : 0;
-          if (r > 0) back.push({ ...l, qty: r, total: l.unit * r });
-          return r > 0 ? { ...l, qty: l.qty - r, total: l.unit * (l.qty - r) } : l;
+          const fb = Math.min(l.back || 0, r); // returned qty that was never in stock: just drops off the waiting list
+          if (r > 0) back.push({ ...l, qty: r - fb, total: l.unit * r, fromBack: fb });
+          if (!(r > 0)) return l;
+          const nl = { ...l, qty: l.qty - r, total: l.unit * (l.qty - r) };
+          if ((l.back || 0) - fb > 0) nl.back = l.back - fb; else delete nl.back;
+          return nl;
         }).filter((l) => l.qty > 0);
         const products = await getProducts();
         L.applyStock(products, back, +1);
+        for (const bl of back) if (bl.fromBack) await needSync(bl.pid, bl.name, bl.size, -bl.fromBack);
+        if (o.backorder && !newLines.some((l) => l.back > 0)) o.backorder = false;
         await db.set('products', products);
         const reason = str(body.reason, 200);
         if (!newLines.length) {
@@ -568,8 +624,9 @@ module.exports = async (req, res) => {
         if (!o) return send(404, { error: 'Order nahi mila' });
         if (o.status !== 'cancelled') {
           const products = await getProducts();
-          L.applyStock(products, o.lines, +1);
+          L.applyStock(products, L.physLines(o.lines), +1);
           await db.set('products', products);
+          await backSync(o.lines, -1);
         }
         await db.set('orders', orders.filter((x) => x.id !== c));
         await db.del('pay:' + c);
@@ -629,7 +686,12 @@ module.exports = async (req, res) => {
         need('sell');
         const body = await readBody(req);
         const [settings, products] = await Promise.all([getSettings(), getProducts()]);
-        const lines = L.buildLines(body.items, products, settings, { onlyActive: false });
+        const lines = L.buildLines(body.items, products, settings, { onlyActive: false, backorder: true });
+        const hasBack = lines.some((l) => l.back > 0);
+        if (hasBack) {
+          const nm0 = str(body.customerName, 80), ph0 = str(body.customerPhone, 20);
+          if (!nm0 || nm0.toLowerCase() === 'walk-in' || ph0.replace(/\D/g, '').length < 10) return send(400, { error: 'Jis perfume ka stock nahi, uske order ke liye customer ka naam aur sahi phone number likhein' });
+        }
         const t = L.totals(lines, settings, null, body.discount, true);
         const call = body.call === true; // phone / home-delivery order made by staff
         let callInfo = null;
@@ -652,7 +714,7 @@ module.exports = async (req, res) => {
           advance = Math.max(0, Math.round(+body.advance) || 0);
           if (advance >= t.total) return send(400, { error: 'Advance poori payment ke barabar ya zyada hai, to udhaar nahi bante. Udhaar ka tick hata dein' });
         }
-        L.applyStock(products, lines, -1);
+        L.applyStock(products, L.physLines(lines), -1);
         const { no, id } = await nextOrderId();
         const order = callInfo ? {
           id, no, token: newToken(), createdAt: new Date().toISOString(), source: 'online', channel: 'call', by: au.name, status: 'pending', dcSet: true,
@@ -665,11 +727,13 @@ module.exports = async (req, res) => {
           customer: { name: str(body.customerName, 80) || 'Walk-in', phone: str(body.customerPhone, 20), city: '', address: '', note: '' },
           lines, ...t, coupon: '',
         };
+        if (hasBack) { order.status = 'pending'; order.backorder = true; }
         if (ud) {
           order.udhaar = true; order.paid = false; order.udhaarAt = order.createdAt; order.payments = [];
           if (advance > 0) order.payments.push({ id: 'py_' + crypto.randomBytes(4).toString('hex'), at: order.createdAt, amount: advance, method: PMETH.includes(body.payment) ? body.payment : 'Cash', note: 'Advance', by: au.name });
         }
         await db.set('products', products);
+        if (hasBack) await backSync(lines, +1);
         const orders = await getOrders();
         orders.unshift(order);
         await db.set('orders', orders);
