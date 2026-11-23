@@ -225,15 +225,45 @@ footer a{color:var(--gold2)}
 .proof{display:grid;gap:8px;margin-top:8px;border:1.5px dashed var(--gold);border-radius:12px;padding:12px;text-align:center;cursor:pointer;color:var(--gold)}.proof img{max-height:150px;max-width:100%;margin:0 auto;border-radius:8px;object-fit:contain}
 .srchbtn{margin-left:auto;width:40px;height:40px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;color:var(--gold2);flex:none}.srchbtn:hover{border-color:var(--gold)}.srchbtn svg{width:19px;height:19px}
 .sbar{display:none;border-top:1px solid var(--line);padding:8px 0}.sbar.on{display:block}.sbar .wrap{display:flex;gap:8px;align-items:center}.sbar input{border-radius:999px;padding:10px 16px}.sbar button{width:36px;height:36px;font-size:24px;color:var(--mute);flex:none}
+
+/* ---- limited time deals ---- */
+.dsec{padding:10px 0 4px}
+.dcard{position:relative;overflow:hidden;border-radius:22px;border:1px solid var(--gold);background:linear-gradient(135deg,color-mix(in srgb,var(--card),#000 25%),var(--card));padding:22px 18px;box-shadow:0 14px 40px rgba(0,0,0,.28)}
+.dcard:before{content:"";position:absolute;inset:0;background:radial-gradient(600px 200px at 85% -10%,color-mix(in srgb,var(--gold) 28%,transparent),transparent);pointer-events:none}
+.dlab{display:inline-block;background:linear-gradient(135deg,var(--gold2),var(--gold));color:var(--on);font-weight:700;font-size:11.5px;letter-spacing:2px;text-transform:uppercase;padding:5px 14px;border-radius:999px}
+.dtt{font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(30px,6vw,46px);line-height:1.05;margin:10px 0 4px;color:var(--ink)}
+.dst{color:var(--mute);font-size:14.5px}
+.ditems{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:16px 0}
+.di{flex:1 1 96px;max-width:160px;background:color-mix(in srgb,var(--bg),#000 12%);border:1px solid var(--line);border-radius:14px;padding:10px 8px;text-align:center;font-size:13px}
+.di .ph{width:100%;height:84px;display:grid;place-items:center;margin-bottom:6px}.di .ph img,.di .ph svg{max-height:84px;max-width:100%;object-fit:contain}
+.di b{display:block;line-height:1.25}.di span{color:var(--mute);font-size:12px}
+.dprice{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:6px 0 10px}
+.dprice s{color:var(--mute);font-size:18px}.dprice b{font-family:'Cormorant Garamond',Georgia,serif;font-size:44px;line-height:1}
+.dsave{display:inline-block;background:color-mix(in srgb,var(--red) 22%,transparent);color:#ff9d8c;border:1px solid color-mix(in srgb,var(--red) 55%,transparent);font-weight:700;font-size:12.5px;padding:3px 10px;border-radius:999px}
+.dcd{display:flex;gap:8px;margin:10px 0 16px}
+.dcd div{min-width:58px;text-align:center;background:color-mix(in srgb,var(--bg),#000 25%);border:1px solid var(--line);border-radius:12px;padding:8px 6px}
+.dcd b{display:block;font-size:24px;line-height:1.05;font-variant-numeric:tabular-nums;color:var(--gold2)}.dcd small{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mute)}
+.dbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,var(--gold2),var(--gold));color:var(--on);font-weight:700;border-radius:999px;padding:13px 28px;font-size:15.5px;width:100%;max-width:340px;box-shadow:0 8px 22px color-mix(in srgb,var(--gold) 35%,transparent)}
+.dbtn[disabled]{opacity:.55;filter:grayscale(.5)}
+.dov{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(3px)}
+.dov.on{display:flex;animation:dfade .25s}
+.dov .dcard{max-width:520px;width:100%;max-height:94vh;overflow:auto;animation:dpop .35s cubic-bezier(.2,.9,.3,1.2)}
+.dov .dx{position:absolute;top:10px;right:12px;z-index:3;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:24px;line-height:1}
+.dposter{display:block;width:100%;height:auto;border-radius:14px;border:1px solid var(--line)}
+.dov .dlater{display:block;margin:12px auto 0;color:var(--mute);font-size:13.5px;text-decoration:underline}
+@keyframes dfade{from{opacity:0}}@keyframes dpop{from{transform:translateY(24px) scale(.94);opacity:0}}
+#dbar{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;background:linear-gradient(90deg,#7a1f12,#b3341f,#7a1f12);color:#fff;text-align:center;font-size:13px;font-weight:600;padding:7px 12px;cursor:pointer;letter-spacing:.3px}
+#dbar b{font-variant-numeric:tabular-nums;background:rgba(0,0,0,.3);border-radius:6px;padding:1px 7px;margin:0 4px}
 #shop{scroll-margin-top:120px}
 #toTop{position:fixed;right:16px;bottom:18px;z-index:16;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--gold2),var(--gold));color:#1b1608;display:grid;place-items:center;box-shadow:0 6px 20px #0006;opacity:0;pointer-events:none;transform:translateY(10px);transition:.2s}#toTop.on{opacity:1;pointer-events:auto;transform:none}#toTop svg{width:22px;height:22px}
 </style>
 </head>
 <body>
+<div id="dbar" role="button"></div>
 <div class="ann" id="ann"></div>
 <header><div class="wrap nav">
   <a class="brand" href="#top" id="logo"><span id="logoMark"></span><span><b id="shopName">Zeen's Fragrance</b><small>Perfumes</small></span></a>
-  <nav class="navlinks"><a href="#shop">Shop</a><a href="#offers">Offers</a><a href="#why">Why Us</a><a href="#contact">Contact</a></nav>
+  <nav class="navlinks"><a href="#deals" id="navDeal" style="display:none;color:#ff9d8c;font-weight:700">🔥 Deal</a><a href="#shop">Shop</a><a href="#offers">Offers</a><a href="#why">Why Us</a><a href="#contact">Contact</a></nav>
   <button class="srchbtn" id="sBtn" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
   <button class="cartbtn" id="cartBtn" aria-label="Open cart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 016 0"/></svg>Cart<b id="cartN">0</b></button>
 </div>
@@ -263,6 +293,8 @@ footer a{color:var(--gold2)}
 </div></div>
 
 <div class="mq"><div id="mq"></div></div>
+
+<section id="deals" class="dsec" style="display:none"><div class="wrap"><div id="dealBox"></div></div></section>
 
 <section><div class="wrap">
   <div class="sh center" style="justify-content:center"><div><h2 class="gtext">Shop by Collection</h2><div class="orn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 10-3 10-3-10z"/></svg></div></div></div>
@@ -331,7 +363,8 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rs=n=>'Rs. '+Number(n).toLocaleString('en-PK');
 const BOTTLE=`<svg viewBox="0 0 100 130" fill="none"><defs><linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--gold2)"/><stop offset="1" style="stop-color:var(--gold)"/></linearGradient></defs><rect x="40" y="6" width="20" height="14" rx="3" fill="url(#bg1)"/><rect x="44" y="20" width="12" height="10" fill="url(#bg1)" opacity=".7"/><rect x="18" y="30" width="64" height="92" rx="14" style="fill:color-mix(in srgb,var(--gold) 14%,transparent)" stroke="url(#bg1)" stroke-width="2.5"/><rect x="28" y="62" width="44" height="34" rx="4" stroke="url(#bg1)" stroke-width="1.5"/><text x="50" y="86" text-anchor="middle" font-family="Georgia,serif" font-size="22" style="fill:var(--gold2)">Z</text><path d="M26 42c0-5 4-8 9-8" stroke="#fff" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/></svg>`;
-let S={},P=[],cat='all',cart=[],RV=[];
+let S={},P=[],cat='all',cart=[],RV=[],DEALS=[],SKEW=0,dcart=[];
+try{dcart=JSON.parse(localStorage.getItem('zdeal')||'[]')}catch{}
 try{cart=JSON.parse(localStorage.getItem('zcart')||'[]')}catch{}
 let coupon=null;
 
@@ -413,7 +446,7 @@ async function init(){
   const cs=['all',...new Set(P.map(p=>p.category))];
   const nm={all:'All',men:'Men',women:'Women',unisex:'Unisex'};
   $('#cats').innerHTML=cs.map(c=>`<button class="chip ${c===cat?'on':''}" data-c="${c}">${nm[c]||c}</button>`).join(' ');
-  render();renderCart();
+  render();dealInit(d);renderCart();
 }
 function card(p){
   const v=minV(p),mx=Math.max(...p.variants.map(x=>x.pct));
@@ -519,8 +552,65 @@ $('#pov').addEventListener('click',async e=>{
   if(e.target.id==='add'){addCart(cur.id,sel,qty);$('#pov').classList.remove('on');openCart()}
 });
 
+
+// ----- limited time deals -----
+const nowC=()=>Date.now()+SKEW;
+const dLive=d=>nowC()>=Date.parse(d.start)&&nowC()<=Date.parse(d.end);
+function dIts(d){const a=[];for(const i of d.items){const p=P.find(x=>x.id===i.pid),v=p&&p.variants.find(x=>x.size===i.size);if(!p||!v)return null;a.push({p,v,qty:i.qty})}return a}
+const dMax=its=>Math.min(...its.map(i=>Math.floor(i.v.stock/i.qty)));
+function dlines(){return dcart.map(c=>{const d=DEALS.find(x=>x.id===c.deal),its=d&&dLive(d)&&dIts(d);if(!its)return null;const m=Math.min(dMax(its),5);return m>0?{d,its,qty:Math.min(c.qty,m)}:null}).filter(Boolean)}
+function dRows(d,its){const orig=its.reduce((a,i)=>a+i.v.final*i.qty,0),save=Math.max(0,orig-d.price),m=Math.min(dMax(its),5);return {orig,save,m}}
+function dBody(d,its,pop){const r=dRows(d,its);
+  if(d.image)return `<img class="dposter" src="/api/img/${d.image}" alt="${esc(d.title)}">
+  <div class="dst" style="margin-top:12px;text-align:center">Offer ends in</div><div class="dcd" data-cd="${d.id}" style="justify-content:center"><div><b>00</b><small>Days</small></div><div><b>00</b><small>Hours</small></div><div><b>00</b><small>Mins</small></div><div><b>00</b><small>Secs</small></div></div>
+  <div style="text-align:center"><button class="dbtn" data-dgrab="${d.id}" ${r.m<1?'disabled':''}>${r.m<1?'Sold out':'Grab this deal · '+rs(d.price)}</button></div>${pop?'<button class="dlater" data-dlater>Maybe later</button>':''}`;
+  return `<span class="dlab">⚡ Limited time deal</span><div class="dtt gtext">${esc(d.title)}</div>${d.subtitle?`<div class="dst">${esc(d.subtitle)}</div>`:''}
+  <div class="ditems">${its.map(i=>`<div class="di"><div class="ph">${img(i.p)}</div><b>${esc(i.p.name)}</b><span>${esc(i.v.size)}${i.qty>1?' × '+i.qty:''}</span></div>`).join('')}</div>
+  <div class="dprice">${r.save>0?`<s>${rs(r.orig)}</s>`:''}<b class="gtext">${rs(d.price)}</b>${r.save>0?`<span class="dsave">Save ${rs(r.save)}</span>`:''}</div>
+  <div class="dst" style="margin-top:6px">Offer ends in</div><div class="dcd" data-cd="${d.id}"><div><b>00</b><small>Days</small></div><div><b>00</b><small>Hours</small></div><div><b>00</b><small>Mins</small></div><div><b>00</b><small>Secs</small></div></div>
+  <button class="dbtn" data-dgrab="${d.id}" ${r.m<1?'disabled':''}>${r.m<1?'Sold out':'Grab this deal →'}</button>${pop?'<button class="dlater" data-dlater>Maybe later</button>':''}`}
+function dTick(){
+  const live=DEALS.filter(d=>dLive(d)&&dIts(d));
+  document.querySelectorAll('[data-cd]').forEach(el=>{const d=DEALS.find(x=>x.id===el.dataset.cd);if(!d)return;let t=Math.max(0,Date.parse(d.end)-nowC());const x=[Math.floor(t/864e5),Math.floor(t/36e5)%24,Math.floor(t/6e4)%60,Math.floor(t/1e3)%60];el.querySelectorAll('b').forEach((b,i)=>b.textContent=String(x[i]).padStart(2,'0'))});
+  const bar=$('#dbar');if(bar&&live[0]){const t=Math.max(0,Date.parse(live[0].end)-nowC()),h=Math.floor(t/36e5),m=Math.floor(t/6e4)%60,sc=Math.floor(t/1e3)%60;bar.innerHTML=`🔥 ${esc(live[0].title)} · ends in <b>${h>=48?Math.floor(h/24)+'d '+(h%24)+'h':String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0')}</b> · View deal`}
+  if(DEALS.length&&!live.length&&$('#deals').style.display!=='none'){dealUI()}
+}
+function dealUI(){
+  const live=DEALS.filter(d=>dLive(d)&&dIts(d));
+  $('#deals').style.display=live.length?'':'none';$('#dbar').style.display=live.length?'block':'none';$('#navDeal').style.display=live.length?'':'none';
+  $('#dealBox').innerHTML=live.map(d=>`<div class="dcard" style="margin-bottom:14px">${dBody(d,dIts(d),false)}</div>`).join('');
+  if(!live.length)$('#dpop').classList.remove('on');
+  dTick();
+}
+function dealPop(id){
+  const d=DEALS.find(x=>x.id===id),its=d&&dLive(d)&&dIts(d);if(!its)return;
+  $('#dpop').innerHTML=`<div class="dcard"><button class="dx" data-dlater aria-label="Close">×</button>${dBody(d,its,true)}</div>`;
+  $('#dpop').classList.add('on');dTick();
+}
+function dealGrab(id){
+  const d=DEALS.find(x=>x.id===id),its=d&&dLive(d)&&dIts(d);if(!its)return;
+  const m=Math.min(dMax(its),5);if(m<1)return;
+  const c=dcart.find(x=>x.deal===id);if(c)c.qty=Math.min(m,c.qty+1);else dcart.push({deal:id,qty:1});
+  coupon=null;save();renderCart();$('#dpop').classList.remove('on');openCart();
+}
+function dealInit(d){
+  DEALS=d.deals||[];SKEW=(d.now||Date.now())-Date.now();
+  dealUI();
+  document.addEventListener('click',e=>{
+    const g=e.target.closest('[data-dgrab]');if(g){dealGrab(g.dataset.dgrab);return}
+    if(e.target.closest('[data-dlater]')||e.target===$('#dpop')){$('#dpop').classList.remove('on');return}
+    if(e.target.closest('#dbar')){const l=DEALS.find(x=>dLive(x));if(l)dealPop(l.id)}
+  });
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#dpop').classList.remove('on')});
+  setInterval(dTick,1000);
+  const live=DEALS.filter(x=>dLive(x)&&dIts(x));
+  if(live.length){let seen=[];try{seen=JSON.parse(sessionStorage.getItem('zdseen')||'[]')}catch{}
+    const nw=live.find(x=>!seen.includes(x.id));
+    if(nw)setTimeout(()=>{if(!$('#drawer').classList.contains('on')){dealPop(nw.id);try{sessionStorage.setItem('zdseen',JSON.stringify([...seen,nw.id]))}catch{}}},1400)}
+}
+
 // ----- cart -----
-const save=()=>{try{localStorage.setItem('zcart',JSON.stringify(cart))}catch{}};
+const save=()=>{try{localStorage.setItem('zcart',JSON.stringify(cart));localStorage.setItem('zdeal',JSON.stringify(dcart))}catch{}};
 function addCart(pid,size,q){
   const v=P.find(p=>p.id===pid).variants.find(x=>x.size===size);
   const i=cart.find(c=>c.pid===pid&&c.size===size);
@@ -531,21 +621,24 @@ function lines(){
   return cart.map(c=>{const p=P.find(x=>x.id===c.pid),v=p&&p.variants.find(x=>x.size===c.size);return p&&v&&v.stock>0?{...c,p,v,qty:Math.min(c.qty,v.stock)}:null}).filter(Boolean);
 }
 function calc(){
-  const L=lines(),sub=L.reduce((s,l)=>s+l.v.final*l.qty,0);
+  const L=lines(),DL=dlines(),sub=L.reduce((s,l)=>s+l.v.final*l.qty,0)+DL.reduce((s,x)=>s+x.d.price*x.qty,0);
   const cd=coupon?Math.min(coupon.discount,sub):0,after=sub-cd;
   const fixed=S.deliveryMode==='fixed';
   const free=S.freeDeliveryAbove>0&&after>=S.freeDeliveryAbove;
-  const del=(L.length&&fixed)?(free?0:S.deliveryCharge):0;
-  return {L,sub,cd,del,total:after+del};
+  const del=((L.length||DL.length)&&fixed)?(free?0:S.deliveryCharge):0;
+  return {L,DL,sub,cd,del,total:after+del};
 }
 function renderCart(){
-  const t=calc();cart=t.L.map(({pid,size,qty})=>({pid,size,qty}));save();
-  $('#cartN').textContent=cart.reduce((s,c)=>s+c.qty,0);
-  $('#cartBody').innerHTML=t.L.length?t.L.map(l=>`<div class="line"><div class="ph">${img(l.p)}</div>
+  const t=calc();cart=t.L.map(({pid,size,qty})=>({pid,size,qty}));dcart=t.DL.map(x=>({deal:x.d.id,qty:x.qty}));save();const has=t.L.length||t.DL.length;
+  $('#cartN').textContent=cart.reduce((s,c)=>s+c.qty,0)+dcart.reduce((s,c)=>s+c.qty,0);
+  $('#cartBody').innerHTML=has?t.DL.map(x=>`<div class="line"><div class="ph">${img(x.its[0].p)}</div>
+    <div><b>🔥 ${esc(x.d.title)}</b><br><small>${x.its.map(i=>esc(i.p.name)+' '+esc(i.v.size)+(i.qty>1?' ×'+i.qty:'')).join(' + ')}</small><br><small>${rs(x.d.price)} deal price</small><br>
+    <span class="qty" style="margin-top:4px"><button data-dq="-1" data-dk="${x.d.id}">−</button><span>${x.qty}</span><button data-dq="1" data-dk="${x.d.id}">+</button></span></div>
+    <div style="text-align:right"><b>${rs(x.d.price*x.qty)}</b><br><button class="rm" data-drm="${x.d.id}">Remove</button></div></div>`).join('')+t.L.map(l=>`<div class="line"><div class="ph">${img(l.p)}</div>
     <div><b>${esc(l.p.name)}</b><br><small>${esc(l.size)} · ${rs(l.v.final)}</small><br>
     <span class="qty" style="margin-top:4px"><button data-q="-1" data-k="${l.pid}|${esc(l.size)}">−</button><span>${l.qty}</span><button data-q="1" data-k="${l.pid}|${esc(l.size)}">+</button></span></div>
     <div style="text-align:right"><b>${rs(l.v.final*l.qty)}</b><br><button class="rm" data-rm="${l.pid}|${esc(l.size)}">Remove</button></div></div>`).join(''):'<div class="empty">Your cart is empty.</div>';
-  $('#cartFoot').innerHTML=t.L.length?`
+  $('#cartFoot').innerHTML=has?`
     <div class="cpn"><input id="cin" placeholder="Coupon code" value="${esc(coupon?coupon.code:'')}"><button id="capply">Apply</button></div><div class="msg" id="cmsg"></div>
     <div class="row"><span>Subtotal</span><span>${rs(t.sub)}</span></div>
     ${t.cd?`<div class="row"><span>Coupon (${esc(coupon.code)})</span><span>− ${rs(t.cd)}</span></div>`:''}
@@ -557,6 +650,10 @@ function renderCart(){
 function openCart(){$('#drawer').classList.add('on')}
 $('#cartBtn').onclick=openCart;$('#closeCart').onclick=()=>$('#drawer').classList.remove('on');
 $('#drawer').addEventListener('click',async e=>{
+  const dq=e.target.closest('[data-dq]');
+  if(dq){const c=dcart.find(x=>x.deal===dq.dataset.dk);if(c){c.qty+=+dq.dataset.dq;if(c.qty<1)dcart=dcart.filter(x=>x!==c);coupon=null;renderCart()}return}
+  const dr=e.target.closest('[data-drm]');
+  if(dr){dcart=dcart.filter(x=>x.deal!==dr.dataset.drm);coupon=null;renderCart();return}
   const q=e.target.closest('[data-q]');
   if(q){const[k,s]=q.dataset.k.split('|');const c=cart.find(x=>x.pid===k&&x.size===s);if(c){c.qty+=+q.dataset.q;if(c.qty<1)cart=cart.filter(x=>x!==c);coupon=null;renderCart()}return}
   const r=e.target.closest('[data-rm]');
@@ -625,12 +722,12 @@ $('#cov').addEventListener('submit',async e=>{
   if(cu.pt==='online'&&(!PROOF||(cu.ref||'').trim().length<4)){$('#cer').textContent=!PROOF?'Payment ka screenshot lagana zaroori hai':'Transaction ID likhna zaroori hai';return}
   const btn=$('#place');btn.disabled=true;btn.textContent='Placing...';
   try{
-    const r=await fetch('/api/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:cart,customer:cu,coupon:coupon&&coupon.code,payment:{method:cu.pt==='online'&&cu.pm?cu.pm:'cod',ref:cu.ref||'',proof:cu.pt==='online'?PROOF:''}})});
+    const r=await fetch('/api/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:[...cart,...dcart.map(x=>({deal:x.deal,qty:x.qty}))],customer:cu,coupon:coupon&&coupon.code,payment:{method:cu.pt==='online'&&cu.pm?cu.pm:'cod',ref:cu.ref||'',proof:cu.pt==='online'?PROOF:''}})});
     const d=await r.json();
     if(!r.ok){$('#cer').textContent=d.error||'Error';btn.disabled=false;btn.textContent='Place Order';
       if(/bacha|available/.test(d.error||'')){const s=await (await fetch('/api/shop')).json();P=s.products;renderCart();render()}return}
     try{localStorage.setItem('zcust',JSON.stringify({name:cu.name,phone:cu.phone,city:cu.city,address:cu.address}))}catch{}
-    const o=d.order;cart=[];coupon=null;save();renderCart();$('#drawer').classList.remove('on');
+    const o=d.order;cart=[];dcart=[];coupon=null;save();renderCart();$('#drawer').classList.remove('on');
     const online=o.payment!=='COD';
     $('#cm').innerHTML=`<div class="ok-box"><h2>Thank you, ${esc(o.customer.name.split(' ')[0])}! 🎉</h2><p>Your order <b>${esc(o.id)}</b> has been placed successfully.<br>${online?`Payment received for verification: <b>${rs(o.total)}</b>`:`Total to pay on delivery: <b>${rs(o.total)}</b>`}</p>
       <div class="dnote">🚚 Estimated delivery: <b>${esc(S.deliveryDays||'7 working days')}</b>${o.deliveryNote?'<br>'+esc(o.deliveryNote):''}</div>
@@ -642,5 +739,6 @@ $('#cov').addEventListener('submit',async e=>{
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){['#pov','#cov'].forEach(s=>$(s).classList.remove('on'));$('#drawer').classList.remove('on')}});
 init();
 </script>
+<div class="dov" id="dpop" role="dialog" aria-modal="true" aria-label="Special offer"></div>
 </body>
 </html>
