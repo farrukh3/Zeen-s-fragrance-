@@ -102,6 +102,7 @@ function render(){
   if(o.source==='store')paid=`Paid: ${esc(o.payment)}`;
   else if(o.payment==='COD')paid=o.status==='delivered'?'Paid (Cash on Delivery)':`Payment: Cash on Delivery. Please pay ${rs(o.total)} when your parcel arrives.`;
   else paid=o.paid?(o.delivery>0?`Paid ${rs(o.total-o.delivery)} online via ${esc(o.payment)}. Delivery charges ${rs(o.delivery)} to be paid on delivery.`:`Paid online via ${esc(o.payment)}`):`Online payment via ${esc(o.payment)}: awaiting confirmation${o.paymentRef?' (Txn: '+esc(o.paymentRef)+')':''}`;
+  if(o.udhaar&&o.status!=='cancelled'){const got=(o.payments||[]).reduce((a,x)=>a+x.amount,0),dueA=Math.max(0,o.total-got);paid=dueA>0?`Udhaar: ${rs(got)} mil chuke. <b>Baqaya: ${rs(dueA)}</b>`:'Paid (poori payment mil gayi)'}
   const rows=o.lines.map((l,i)=>`<tr><td class="hide-s">${i+1}</td><td><b>${esc(l.name)}</b><br><span style="color:#6b665a">${esc(l.size)} × ${l.qty}</span></td><td class="r hide-s">${rs(l.orig)}</td><td class="r hide-s">${l.orig>l.unit?'-'+rs((l.orig-l.unit)*l.qty):'—'}</td><td class="r">${rs(l.total)}</td></tr>`).join('');
   $('#root').innerHTML=`<div class="paper">
    <div class="hd"><div class="brand">${s.logo?`<img src="/api/img/${esc(s.logo)}" alt="">`:''}<div><h1>${esc(s.shopName)}</h1><p>${[s.address,s.phone&&'Phone: '+s.phone,igH(s.instagram)&&'Instagram: '+igH(s.instagram),s.facebook&&'Facebook: '+s.shopName].filter(Boolean).map(esc).join('<br>')}</p></div></div>
