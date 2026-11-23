@@ -112,6 +112,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--gold)}
 .oc .oa{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.oc .or{text-align:right;font-size:13px;align-self:center}.oc .or b{font-size:16px;color:var(--gold)}.oc .ob{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .oc .of2{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
 .oh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.bq{border-left:4px solid var(--red)}
 .nrow{display:grid;grid-template-columns:1.2fr 1fr auto auto;gap:6px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:14px;background:#fff;margin-bottom:8px}
 .nrow .rp{grid-column:1/-1}
 .nrow input[type=checkbox]{width:20px;height:20px;padding:0;accent-color:var(--gold)}
@@ -206,14 +207,15 @@ async function load(){
   draw();
 }
 const can=k=>!D||!D.me||(D.me.perms||[]).includes(k);
-const tabs=[['dash','Dashboard'],['sell','Sell (In-Store)'],['prod','Products'],['need','Requirement'],['ord','Orders'],['req','Requests'],['hist','History'],['rev','Reviews'],['acc','Accounts'],['off','Offers'],['set','Settings'],['staff','Staff']];
+const tabs=[['dash','Dashboard'],['sell','Sell (In-Store)'],['prod','Products'],['need','Requirement'],['ord','Orders'],['baq','Baqaya'],['req','Requests'],['hist','History'],['rev','Reviews'],['acc','Accounts'],['off','Offers'],['set','Settings'],['staff','Staff']];
 function draw(){
   const pending=D.orders.filter(o=>o.status==='pending').length;
-  const vis=tabs.filter(([k])=>k==='staff'?(D.me&&D.me.owner):can(k==='need'?'prod':k));if(!vis.some(([k])=>k===tab))tab=vis[0]?vis[0][0]:'dash';
+  const vis=tabs.filter(([k])=>k==='staff'?(D.me&&D.me.owner):can(k==='need'?'prod':k==='baq'?'ord':k));if(!vis.some(([k])=>k===tab))tab=vis[0]?vis[0][0]:'dash';
   const pendRev=(D.reviews||[]).filter(r=>r.status==='pending').length;
   const openReq=(D.requests||[]).filter(r=>r.status==='open').length;
-  const IC={dash:'<path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/>',sell:'<path d="M6 6h15l-1.5 9h-12zM6 6 5 3H2M9 20a1 1 0 1 0 0 .01M18 20a1 1 0 1 0 0 .01"/>',need:'<path d="M9 5h11M9 12h11M9 19h11M3.5 5l1 1 2-2M3.5 12l1 1 2-2M3.5 19l1 1 2-2"/>',prod:'<path d="M9 2h6v4l2 3v11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9l2-3z"/>',ord:'<path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/>',req:'<path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',hist:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',rev:'<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',acc:'<path d="M3 20h18M6 20V10M12 20V4M18 20v-7"/>',off:'<path d="M20 12 12 20 3 11V3h8zM7.5 7.5h.01"/>',set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',staff:'<circle cx="9" cy="8" r="3.5"/><path d="M2 21v-1a6 6 0 0 1 12 0v1M16 4.5a3.5 3.5 0 0 1 0 7M22 21v-1a5 5 0 0 0-4-4.9"/>'};
-  const badge={ord:pending,req:openReq,rev:pendRev};
+  const IC={dash:'<path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/>',sell:'<path d="M6 6h15l-1.5 9h-12zM6 6 5 3H2M9 20a1 1 0 1 0 0 .01M18 20a1 1 0 1 0 0 .01"/>',baq:'<path d="M12 2v20M17 6.5H9.5a3 3 0 0 0 0 6h5a3 3 0 0 1 0 6H6"/>',need:'<path d="M9 5h11M9 12h11M9 19h11M3.5 5l1 1 2-2M3.5 12l1 1 2-2M3.5 19l1 1 2-2"/>',prod:'<path d="M9 2h6v4l2 3v11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9l2-3z"/>',ord:'<path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/>',req:'<path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',hist:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',rev:'<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',acc:'<path d="M3 20h18M6 20V10M12 20V4M18 20v-7"/>',off:'<path d="M20 12 12 20 3 11V3h8zM7.5 7.5h.01"/>',set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',staff:'<circle cx="9" cy="8" r="3.5"/><path d="M2 21v-1a6 6 0 0 1 12 0v1M16 4.5a3.5 3.5 0 0 1 0 7M22 21v-1a5 5 0 0 0-4-4.9"/>'};
+  const dueN=new Set(D.orders.filter(o=>dueOf(o)>0).map(ckey)).size;
+  const badge={ord:pending,baq:dueN,req:openReq,rev:pendRev};
   const logo=D.settings.logo?`<img src="/api/img/${D.settings.logo}" alt="">`:`<span class="lg0">Z</span>`;
   const brand=`<div class="brand">${logo}<div><b>Zeen's Admin</b><small>${D.me&&!D.me.owner?esc(D.me.name):'Owner'}</small></div></div>`;
   $('#app').innerHTML=`<div class="shell"><aside class="side">${brand}<nav class="tabs">${vis.map(([k,v])=>`<button class="tab ${k===tab?'on':''}" data-t="${k}"><svg viewBox="0 0 24 24">${IC[k]||''}</svg><span>${v.replace(' (In-Store)','')}</span>${badge[k]?`<i class="bd">${badge[k]}</i>`:''}</button>`).join('')}</nav>
@@ -221,12 +223,16 @@ function draw(){
   <div class="content"><div class="mtop">${brand}<a class="btn g s" href="/" target="_blank" style="text-decoration:none">Shop</a><button class="btn g s" id="pw2" aria-label="Change password">🔑</button><button class="btn g s" id="lo2">Logout</button></div><main id="main"></main></div></div>`;
   document.querySelectorAll('#pw,#pw2').forEach(b=>b.onclick=pwForm);document.querySelectorAll('#lo,#lo2').forEach(b=>b.onclick=async()=>{await api('admin/logout','POST');D=null;showLogin()});
   document.querySelectorAll('.tab').forEach(b=>b.onclick=async()=>{tab=b.dataset.t;await load()});
-  ({dash,sell,prod,need,ord,req,hist,rev,acc,off,set,staff}[tab])();
+  ({dash,sell,prod,need,ord,baq,req,hist,rev,acc,off,set,staff}[tab])();
 }
 const M=h=>{$('#main').innerHTML=h};
 function mobTables(){document.querySelectorAll('#main table').forEach(t=>{if(t.closest('.tblw')||t.dataset.rt)return;const ths=[...t.querySelectorAll('thead th')];if(ths.length<4){t.dataset.rt='0';return}
   t.dataset.rt='1';t.classList.add('rt');t.querySelectorAll('tbody tr').forEach(r=>[...r.children].forEach((td,i)=>{const l=ths[i]&&ths[i].textContent.trim();if(l&&!td.hasAttribute('colspan'))td.dataset.label=l}))})}
 new MutationObserver(()=>requestAnimationFrame(mobTables)).observe(document.getElementById('app')||document.body,{childList:true,subtree:true});
+const payRep=o=>(o.payments||[]).reduce((a,x)=>a+x.amount,0);
+const dueOf=o=>o.udhaar&&o.status!=='cancelled'?Math.max(0,o.total-payRep(o)):0;
+const isPaid=o=>o.udhaar?dueOf(o)<=0:(o.source==='store'||o.paid||(o.payment==='COD'&&o.status==='delivered'));
+const ckey=o=>{const c=o.customer||{},d=String(c.phone||'').replace(/\D/g,'').slice(-10),n=String(c.name||'').toLowerCase().trim();return d.length>=10?d:n&&n!=='walk-in'?'n:'+n:'o:'+o.id};
 const stock=p=>p.variants.reduce((s,v)=>s+v.stock,0);
 const thumb=p=>p.images[0]?`<img class="thumb" src="/api/img/${p.images[0]}">`:BOTTLE;
 
@@ -287,6 +293,7 @@ function dash(){
    ${prof?`<div class="stat"><span>Profit this month</span><b class="grn">${rs(pr(month))}</b></div>`:''}
    <div class="stat"><span>Total sales</span><b>${rs(sum(live))}</b><small class="mut">${live.length} orders</small></div>
    <div class="stat"><span>Pending orders</span><b>${D.orders.filter(o=>o.status==='pending').length}</b></div>
+   <div class="stat"><span>Baqaya (udhaar)</span><b class="${D.orders.some(o=>dueOf(o)>0)?'red':''}">${rs(D.orders.reduce((a,o)=>a+dueOf(o),0))}</b><small class="mut">${new Set(D.orders.filter(o=>dueOf(o)>0).map(ckey)).size} customers</small></div>
    <div class="stat"><span>Waiting for DC</span><b>${D.orders.filter(o=>o.dcSet===false&&o.status!=='cancelled').length}</b><small class="mut">set delivery charges</small></div>
    <div class="stat"><span>Customer requests</span><b>${(D.requests||[]).filter(r=>r.status==='open').length}</b><small class="mut">out-of-stock demand</small></div>
    <div class="stat"><span>Stock (units)</span><b>${D.products.reduce((s,p)=>s+stock(p),0)}</b><small class="mut">${D.products.length} products · Value ${rs(val)}</small></div>
@@ -494,9 +501,9 @@ function ordTable(list){
   if(!list.length)return '<span class="mut">No orders yet.</span>';
   return `<div class="ol">${list.map(o=>{
     const on=o.source!=='store',first=o.lines[0],more=o.lines.length-1;
-    const flags=[];if(o.channel==='call')flags.push('<span class="pill">📞 Call order</span>');
+    const flags=[];if(o.channel==='call')flags.push('<span class="pill">📞 Call order</span>');if(dueOf(o)>0)flags.push(`<span class="pill cancelled">Baqaya ${rs(dueOf(o))}</span>`);else if(o.udhaar&&o.status!=='cancelled')flags.push('<span class="pill delivered">Udhaar clear</span>');
     if(on&&o.dcSet===false&&o.status!=='cancelled')flags.push('<span class="pill pending">DC pending</span>');
-    if(on&&o.status!=='cancelled'&&o.payment!=='COD'){flags.push(o.paid?'<span class="pill delivered">Paid</span>':'<span class="pill pending">Unpaid</span>');if(!o.proof&&o.channel!=='call')flags.push('<span class="pill cancelled">No proof</span>')}
+    if(on&&!o.udhaar&&o.status!=='cancelled'&&o.payment!=='COD'){flags.push(o.paid?'<span class="pill delivered">Paid</span>':'<span class="pill pending">Unpaid</span>');if(!o.proof&&o.channel!=='call')flags.push('<span class="pill cancelled">No proof</span>')}
     return `<div class="oc" data-oid="${esc(o.id)}" tabindex="0">
      <div class="oa"><b>${esc(o.id)}</b> <span class="pill">${on?'Online':'In-store'}</span> ${stChip(o)}</div><div class="or"><b>${rs(o.total)}</b></div>
      <div class="ob">${esc(o.customer.name||'Walk-in')}${o.customer.phone?' <span class="mut">· '+esc(o.customer.phone)+'</span>':''}</div><div class="or mut">${oTime(o)}</div>
@@ -524,9 +531,15 @@ function orderView(o){
    <tr><td><b>Total</b></td><td style="text-align:right"><b>${rs(o.total)}</b></td></tr>
    ${(o.returns||[]).map(r=>`<tr><td class="mut">Return ${new Date(r.at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}: ${r.items.map(x=>esc(x.name)+' ×'+x.qty).join(', ')}${r.reason?' ('+esc(r.reason)+')':''}</td><td class="low" style="text-align:right">− ${rs(r.refund)}</td></tr>`).join('')}
    ${can('acc')?`<tr><td class="mut">Profit (cost nikal kar)</td><td style="text-align:right;color:var(--green)"><b>${rs(oRev(o)-cost)}</b></td></tr>`:''}</tbody></table></div>
-  <div class="sec"><div class="st">Payment</div><div>${esc(o.payment)}${o.coupon?' · coupon '+esc(o.coupon):''} ${!on||o.paid?'<span class="pill delivered">Paid</span>':'<span class="pill pending">Unpaid</span>'}</div>
+  <div class="sec"><div class="st">Payment</div><div>${esc(o.payment)}${o.coupon?' · coupon '+esc(o.coupon):''} ${o.udhaar?(dueOf(o)>0?`<span class="pill cancelled">Baqaya ${rs(dueOf(o))}</span>`:'<span class="pill delivered">Paid (udhaar clear)</span>'):(!on||o.paid?'<span class="pill delivered">Paid</span>':'<span class="pill pending">Unpaid</span>')}</div>
    ${o.paymentRef?`<div class="mut">Transaction ID: <span style="user-select:all">${esc(o.paymentRef)}</span></div>`:''}
-   <div class="bar" style="margin:8px 0 0">${o.proof?'<button class="btn g s" id="vpf">📷 Payment proof</button>':(payOn&&o.channel!=='call'?'<span class="low">No proof</span>':'')}${ed&&payOn&&!o.paid&&!cancelled?'<button class="btn s" id="vpaid">Paise mil gaye — Mark paid</button>':''}</div></div>
+   <div class="bar" style="margin:8px 0 0">${o.proof?'<button class="btn g s" id="vpf">📷 Payment proof</button>':(payOn&&o.channel!=='call'?'<span class="low">No proof</span>':'')}${ed&&payOn&&!o.paid&&!cancelled&&!o.udhaar?'<button class="btn s" id="vpaid">Paise mil gaye — Mark paid</button>':''}</div></div>
+
+  ${!cancelled&&(o.udhaar||ed)?`<div class="sec ${dueOf(o)>0?'bq':''}"><div class="st">Udhaar / baad me payment</div>
+   ${o.udhaar?`<div>Total ${rs(o.total)} · Mila <b class="grn2">${rs(payRep(o))}</b> · Baqaya <b class="${dueOf(o)>0?'low':'grn2'}">${rs(dueOf(o))}</b></div>
+    ${(o.payments||[]).map(x=>`<div class="lrow"><span>+${rs(x.amount)} · ${esc(x.method)}${x.note?' · '+esc(x.note):''}</span><span class="mut">${new Date(x.at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})} · ${esc(x.by||'')}</span></div>`).join('')}
+    ${ed&&dueOf(o)>0?`<div class="g2" style="margin-top:8px"><label>Amount mila (Rs.)<input id="uamt" type="number" inputmode="numeric" min="1" max="${dueOf(o)}" value="${dueOf(o)}"></label><label>Kaise<select id="umt">${['Cash','Bank Transfer','Easypaisa','JazzCash','Card'].map(x=>`<option>${x}</option>`).join('')}</select></label></div><input id="unt" placeholder="Note (optional)" style="margin-top:6px"><div class="bar" style="margin:8px 0 0"><button class="btn s" id="upay">Payment mili</button>${(o.payments||[]).length?'':'<button class="btn g s" id="uoff">Udhaar hatao</button>'}</div>`:''}`
+   :`${(on&&o.payment!=='COD'&&o.paid)?'<span class="mut">Online payment mil chuki hai.</span>':'<button class="btn g s" id="uon">Udhaar mark karo (customer baad me payment karega)</button>'}`}</div>`:''}
   ${on&&!cancelled?`<div class="sec"><div class="st">Delivery charges (DC)</div>${o.dcSet===false?'<div class="mut">Pehle DC set karein, tab invoice banegi.</div>':`<div>Abhi: <b>${rs(o.delivery)}</b></div>`}
    ${ed?`<div class="bar" style="margin:8px 0 0"><input type="number" id="vdc" min="0" max="5000" placeholder="DC Rs." value="${o.dcSet===false?'':o.delivery}" style="max-width:130px"><button class="btn s" id="vdcb">${o.dcSet===false?'Set DC':'Update DC'}</button></div>`:''}</div>`:''}
   ${ed&&!cancelled?`<div class="sec"><div class="st">Order status</div><div class="bar" style="margin:0"><select id="vst" style="max-width:190px">${['pending','confirmed','shipped','delivered'].map(x=>`<option ${o.status===x?'selected':''}>${x}</option>`).join('')}</select><button class="btn s" id="vstb">Update status</button></div></div>`:''}
@@ -537,6 +550,9 @@ function orderView(o){
   const B=(id,f)=>{const e=$('#'+id);if(e)e.onclick=f};
   B('hc',()=>$('#ov').classList.remove('on'));B('vpf',()=>showProof(o));B('hp',()=>retForm(o));B('hx',()=>cancelOrd(o));B('hd',()=>delOrd(o));B('vwa',()=>waOrder(o));
   B('vpaid',async()=>{try{await api('admin/order/'+o.id+'/paid','POST',{paid:true});toast('Marked as paid');reopenOrd(o.id)}catch(x){toast(x.message,1)}});
+  B('uon',async()=>{try{await api('admin/order/'+o.id+'/credit','POST',{on:true});toast('Udhaar mark ho gaya');reopenOrd(o.id)}catch(x){toast(x.message,1)}});
+  B('uoff',async()=>{try{await api('admin/order/'+o.id+'/credit','POST',{on:false});toast('Udhaar hata diya');reopenOrd(o.id)}catch(x){toast(x.message,1)}});
+  B('upay',async()=>{try{await api('admin/order/'+o.id+'/pay','POST',{amount:+$('#uamt').value,method:$('#umt').value,note:$('#unt').value});toast('Payment record ho gayi');reopenOrd(o.id)}catch(x){toast(x.message,1)}});
   B('vdcb',async()=>{const v=$('#vdc').value;if(v===''||isNaN(+v))return toast('DC amount likhein (0 bhi likh sakte hain)',1);try{await api('admin/order/'+o.id+'/dc','POST',{amount:+v});toast('DC set');reopenOrd(o.id)}catch(x){toast(x.message,1)}});
   B('vstb',async()=>{try{await api('admin/order/'+o.id,'POST',{status:$('#vst').value});toast('Status updated');reopenOrd(o.id)}catch(x){toast(x.message,1)}});
 }
@@ -597,7 +613,7 @@ function histList(){
     if(H.src!=='all'&&o.source!==H.src)return false;
     if(H.st!=='all'&&o.status!==H.st)return false;
     if(H.pay!=='all'&&(H.pay==='COD'?o.payment!=='COD':H.pay==='Online'?!['Bank Transfer','Easypaisa','JazzCash'].includes(o.payment)||o.source==='store':o.payment!==H.pay))return false;
-    if(H.paid!=='all'){const isPaid=o.source==='store'||o.paid||(o.payment==='COD'&&o.status==='delivered');if((H.paid==='paid')!==isPaid)return false}
+    if(H.paid!=='all'){if((H.paid==='paid')!==isPaid(o))return false}
     if(q){const hay=(o.id+' '+o.customer.name+' '+o.customer.phone+' '+o.customer.city+' '+(o.customer.address||'')+' '+o.lines.map(l=>l.name+' '+l.size).join(' ')+' '+(o.paymentRef||'')).toLowerCase();
       if(!hay.includes(q)&&!(dg.length>=4&&String(o.customer.phone).replace(/\D/g,'').includes(dg)))return false}
     return true;
@@ -765,6 +781,36 @@ function needRecv(n){
     try{const r=await api('admin/need/'+n.id+'/receive','POST',{got,prices});toast('Stock add ho gaya ('+r.added+' items)');await load()}catch(x){toast(x.message,1)}};
 }
 
+
+// ---------- baqaya (udhaar) ----------
+let BQ={q:''};
+function baq(){
+  const g={};D.orders.filter(o=>dueOf(o)>0).forEach(o=>{const k=ckey(o);(g[k]=g[k]||{key:k,name:o.customer.name,phone:o.customer.phone,orders:[]}).orders.push(o)});
+  let list=Object.values(g).map(c=>({...c,due:c.orders.reduce((a,o)=>a+dueOf(o),0),oldest:Math.min(...c.orders.map(o=>new Date(o.createdAt).getTime()))})).sort((a,b)=>b.due-a.due);
+  const totDue=list.reduce((a,c)=>a+c.due,0),q=BQ.q.toLowerCase();
+  const shown=list.filter(c=>!q||(c.name+' '+c.phone).toLowerCase().includes(q));
+  const days=t=>Math.floor((Date.now()-t)/864e5);
+  M(`<h2>Baqaya (udhaar)</h2><p class="mut">Jin customers ne maal le liya par paise baad me denge. Payment milne par "Payment mili" dabao, poora ya thora, sab record rehta hai.</p>
+  <div class="cards"><div class="stat"><span>Kul baqaya</span><b class="red">${rs(totDue)}</b><small class="mut">${list.length} customers</small></div></div>
+  <div class="bar"><input id="bqs" placeholder="Naam ya phone search..." value="${esc(BQ.q)}"></div>
+  ${shown.length?shown.map(c=>`<div class="ncard bq"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b style="font-size:16px">${esc(c.name)}</b><div class="mut" style="font-size:12.5px">${esc(c.phone||'phone nahi')} · ${days(c.oldest)} din purana</div></div><b class="low" style="font-size:18px">${rs(c.due)}</b></div>
+   <div style="margin:8px 0">${c.orders.map(o=>`<div class="nl" data-oid="${esc(o.id)}" style="cursor:pointer"><span>${esc(o.id)} <span class="mut">${new Date(o.createdAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</span></span><span>${rs(dueOf(o))} <small class="mut">/ ${rs(o.total)}</small></span></div>`).join('')}</div>
+   <div class="bar" style="margin:0"><button class="btn s" data-bp="${esc(c.key)}">Payment mili</button><button class="btn g s" data-bw="${esc(c.key)}">WhatsApp yaad-dehani</button></div></div>`).join(''):'<div class="panel mut">Koi baqaya nahi 🎉. Udhaar Sell screen me ya kisi order ke andar se mark hota hai.</div>'}`);
+  $('#bqs').oninput=e=>{BQ.q=e.target.value;clearTimeout(window.__bqt);window.__bqt=setTimeout(()=>{baq();const i=$('#bqs');i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)};
+  $('#main').onclick=e=>{
+    const w=e.target.closest('[data-bw]');if(w){const c=list.find(x=>x.key===w.dataset.bw);
+      const m=`Assalam o Alaikum ${c.name},\n${D.settings.shopName} ki taraf se yaad-dehani: aap ke zimme Rs. ${c.due.toLocaleString('en-US')} baqaya hain.\n\n${c.orders.map(o=>`${o.id}: Rs. ${dueOf(o).toLocaleString('en-US')}`).join('\n')}\n\nMeherbani karke jaldi payment kar dein. Shukriya!`;
+      waOpen(c.phone,m);return}
+    const p=e.target.closest('[data-bp]');if(p){const c=list.find(x=>x.key===p.dataset.bp);
+      $('#modal').innerHTML=`<h2>Payment mili: ${esc(c.name)}</h2><p class="mut">Baqaya ${rs(c.due)}. Jitne paise mile wo likho, purane order pehle clear honge.</p>
+       <label>Amount (Rs.)<input id="bpa" type="number" inputmode="numeric" min="1" max="${c.due}" value="${c.due}"></label>
+       <label>Kaise mile<select id="bpm2">${['Cash','Bank Transfer','Easypaisa','JazzCash','Card'].map(x=>`<option>${x}</option>`).join('')}</select></label>
+       <label>Note (optional)<input id="bpn"></label>
+       <div class="bar" style="margin:0"><button class="btn" id="bpg" style="flex:1">Save</button><button class="btn g" id="bpx">Cancel</button></div>`;
+      $('#ov').classList.add('on');$('#bpx').onclick=()=>$('#ov').classList.remove('on');
+      $('#bpg').onclick=async()=>{try{await api('admin/udhaar/pay','POST',{key:c.key,amount:+$('#bpa').value,method:$('#bpm2').value,note:$('#bpn').value});$('#ov').classList.remove('on');toast('Payment record ho gayi');await load()}catch(x){toast(x.message,1)}}}};
+}
+
 // ---------- in-store sell ----------
 function sell(){
   M(`<h2>Sell (In-Store)</h2><div class="pos"><div><div class="bar"><input id="sq" placeholder="Search perfume..." style="width:100%"></div><div class="pp" id="pp"></div></div>
@@ -776,13 +822,13 @@ function sell(){
     if(l){if(l.qty<v.stock)l.qty++}else bill.push({pid,size,qty:1});drawBill()};
   drawBill();
 }
-let CF={call:false,name:'',phone:'',city:'',address:'',dc:'',pay:'COD',paid:false,wn:'',wp:'',wpm:'Cash'};
+let CF={ud:false,adv:'',call:false,name:'',phone:'',city:'',address:'',dc:'',pay:'COD',paid:false,wn:'',wp:'',wpm:'Cash'};
 function drawBill(){
   const g=D.settings.globalDiscount.pct;
   const L=bill.map(b=>{const p=D.products.find(x=>x.id===b.pid),v=p.variants.find(x=>x.size===b.size);const pct=Math.max(v.discount,g);const unit=Math.round(v.price*(1-pct/100));return{...b,p,v,unit}});
   const sub=L.reduce((s,l)=>s+l.unit*l.qty,0);
   const dcv=()=>CF.call?Math.max(0,Math.min(5000,Math.round(+CF.dc)||0)):0;
-  const tot=()=>Math.max(0,sub-(window._bd||0))+dcv();
+  const tot=()=>Math.max(0,sub-(window._bd||0))+dcv();const advv=()=>CF.ud?Math.max(0,Math.round(+CF.adv)||0):0;
   const cust=CF.call?`<div class="sec" style="margin:6px 0"><div class="g2"><label>Customer name *<input id="cn" value="${esc(CF.name)}"></label><label>Phone *<input id="cp" type="tel" inputmode="tel" value="${esc(CF.phone)}"></label></div>
    <label>Address *<input id="ca" value="${esc(CF.address)}"></label>
    <div class="g2"><label>City<input id="cc" value="${esc(CF.city)}"></label><label>Delivery charges (DC) Rs.<input id="cd" type="number" inputmode="numeric" min="0" max="5000" placeholder="0" value="${esc(CF.dc)}"></label></div>
@@ -796,15 +842,19 @@ function drawBill(){
    <label style="margin:6px 0">Extra discount (Rs.)<input id="bd" type="number" min="0" value="${window._bd||0}"></label>
    <label style="flex-direction:row;display:flex;gap:8px;align-items:center;margin:6px 0;font-weight:600"><input type="checkbox" id="ccall" style="width:20px;height:20px;accent-color:var(--gold)" ${CF.call?'checked':''}>📞 Call / Delivery order (DC ke saath)</label>
    ${cust}
+   <label style="flex-direction:row;display:flex;gap:8px;align-items:center;margin:6px 0;font-weight:600"><input type="checkbox" id="cud" style="width:20px;height:20px;accent-color:var(--gold)" ${CF.ud?'checked':''}>Udhaar (paise baad me lenge)</label>
+   ${CF.ud?`<div class="sec" style="margin:6px 0"><span class="mut">Udhaar ke liye customer ka naam aur phone zaroori hai.</span><label>Abhi kitne mile (advance, optional)<input id="cadv" type="number" inputmode="numeric" min="0" placeholder="0" value="${esc(CF.adv)}"></label></div>`:''}
    ${CF.call?`<div class="row"><span>Delivery charges</span><span id="bdc">${rs(dcv())}</span></div>`:''}
    <div class="row t"><span>Total</span><span id="bt">${rs(tot())}</span></div>
+   ${CF.ud?`<div class="row"><span>Baqaya (udhaar)</span><span id="bbq" class="low">${rs(Math.max(0,tot()-advv()))}</span></div>`:''}
    <button class="btn" id="bs" style="width:100%;margin-top:8px">${CF.call?'Order banao (delivery)':'Complete Sale'}</button> <button class="btn g" id="bc" style="width:100%;margin-top:6px">Clear</button>`:'<span class="mut">Tap a size to add it to the bill.</span>';
-  const upd=()=>{const t=$('#bt');if(t)t.textContent=rs(tot());const d=$('#bdc');if(d)d.textContent=rs(dcv())};
+  const upd=()=>{const t=$('#bt');if(t)t.textContent=rs(tot());const q=$('#bbq');if(q)q.textContent=rs(Math.max(0,tot()-advv()));const d=$('#bdc');if(d)d.textContent=rs(dcv())};
   const d=$('#bd');if(d)d.oninput=()=>{window._bd=Math.max(0,+d.value||0);upd()};
   $('#bl').oninput=e=>{const i=e.target.id,v=e.target.value;
-    if(i==='cn')CF.name=v;else if(i==='cp')CF.phone=v;else if(i==='ca')CF.address=v;else if(i==='cc')CF.city=v;else if(i==='cd'){CF.dc=v;upd()}else if(i==='bn')CF.wn=v;else if(i==='bp')CF.wp=v};
+    if(i==='cn')CF.name=v;else if(i==='cp')CF.phone=v;else if(i==='ca')CF.address=v;else if(i==='cc')CF.city=v;else if(i==='cd'){CF.dc=v;upd()}else if(i==='cadv'){CF.adv=v;upd()}else if(i==='bn')CF.wn=v;else if(i==='bp')CF.wp=v};
   $('#bl').onchange=e=>{const i=e.target.id;
     if(i==='ccall'){CF.call=e.target.checked;return drawBill()}
+    if(i==='cud'){CF.ud=e.target.checked;if(!CF.ud)CF.adv='';return drawBill()}
     if(i==='cpm'){CF.pay=e.target.value;if(CF.pay==='COD')CF.paid=false;return drawBill()}
     if(i==='cpd')CF.paid=e.target.checked;
     if(i==='bpm')CF.wpm=e.target.value};
@@ -812,13 +862,14 @@ function drawBill(){
     const m=e.target.closest('[data-m]'),pl=e.target.closest('[data-pl]');
     if(m){const l=bill[+m.dataset.m];l.qty--;if(l.qty<1)bill.splice(+m.dataset.m,1);return drawBill()}
     if(pl){const l=L[+pl.dataset.pl];if(l.qty<l.v.stock)bill[+pl.dataset.pl].qty++;return drawBill()}
-    if(e.target.id==='bc'){bill=[];window._bd=0;CF={call:false,name:'',phone:'',city:'',address:'',dc:'',pay:'COD',paid:false,wn:'',wp:'',wpm:'Cash'};return drawBill()}
+    if(e.target.id==='bc'){bill=[];window._bd=0;CF={ud:false,adv:'',call:false,name:'',phone:'',city:'',address:'',dc:'',pay:'COD',paid:false,wn:'',wp:'',wpm:'Cash'};return drawBill()}
     if(e.target.id==='bs'){
-      const body=CF.call?{items:bill,discount:window._bd||0,call:true,customerName:CF.name,customerPhone:CF.phone,address:CF.address,city:CF.city,dc:dcv(),payment:CF.pay,paid:CF.paid}
-        :{items:bill,discount:window._bd||0,customerName:CF.wn,customerPhone:CF.wp,payment:CF.wpm};
+      const body=CF.call?{udhaar:CF.ud,advance:advv(),items:bill,discount:window._bd||0,call:true,customerName:CF.name,customerPhone:CF.phone,address:CF.address,city:CF.city,dc:dcv(),payment:CF.pay,paid:CF.paid}
+        :{udhaar:CF.ud,advance:advv(),items:bill,discount:window._bd||0,customerName:CF.wn,customerPhone:CF.wp,payment:CF.wpm};
+      if(CF.ud&&!CF.call){if(!CF.wn.trim())return toast('Udhaar ke liye customer ka naam likhein',1);if(CF.wp.replace(/\D/g,'').length<10)return toast('Udhaar ke liye sahi phone number likhein',1)}
       if(CF.call){if(!CF.name.trim())return toast('Customer ka naam likhein',1);if(CF.phone.replace(/\D/g,'').length<10)return toast('Sahi phone number likhein',1);if(!CF.address.trim())return toast('Address likhein',1)}
       try{const r=await api('admin/sale','POST',body);
-        bill=[];window._bd=0;CF={call:false,name:'',phone:'',city:'',address:'',dc:'',pay:'COD',paid:false,wn:'',wp:'',wpm:'Cash'};await load();saleDone(r.order)}catch(x){toast(x.message,1)}
+        bill=[];window._bd=0;CF={ud:false,adv:'',call:false,name:'',phone:'',city:'',address:'',dc:'',pay:'COD',paid:false,wn:'',wp:'',wpm:'Cash'};await load();saleDone(r.order)}catch(x){toast(x.message,1)}
     }
   };
 }
@@ -863,12 +914,13 @@ function waOrder(o){
   if(onlinePaid&&o.delivery>0)m+=`\nPaid online: ${rs(o.total-o.delivery)}\nTo pay on delivery (delivery charges): ${rs(o.delivery)}`;
   else if(o.source!=='store')m+=o.payment==='COD'?`\nPayment: Cash on Delivery`:`\nPayment: ${o.payment} (${o.paid?'received':'pending'})`;
   if(o.source!=='store')m+=`\nEstimated delivery: ${days}`;
+  if(dueOf(o)>0)m+=`\n\nBaqaya (udhaar): ${rs(dueOf(o))}`;
   m+=`\n\nInvoice: ${link}`;
   waOpen(o.customer.phone,m);
 }
 function saleDone(o){
   const call=o.channel==='call';
-  $('#modal').innerHTML=`<h2>${call?'Delivery order ban gaya ✓':'Sale complete ✓'}</h2><div><b>${esc(o.id)}</b> · ${rs(o.total)}${call?` (DC ${rs(o.delivery)})`:''} · ${esc(o.payment)}</div>
+  $('#modal').innerHTML=`<h2>${call?'Delivery order ban gaya ✓':'Sale complete ✓'}</h2><div><b>${esc(o.id)}</b> · ${rs(o.total)}${call?` (DC ${rs(o.delivery)})`:''} · ${esc(o.payment)}${o.udhaar?` · <b class="low">Baqaya ${rs(dueOf(o))}</b>`:''}</div>
   <div class="mut">${call?'Ye order Orders me "pending" hai. Parcel bhejne par status badal dein. Customer ko WhatsApp par invoice bhej sakte hain.':'Give the customer a slip or send the invoice on WhatsApp.'}</div>
   <div class="bar" style="margin:0"><a class="btn" style="text-decoration:none" target="_blank" href="${invUrl(o)}&slip=1&print=1">Print Slip</a>
   <a class="btn g" style="text-decoration:none" target="_blank" href="${invUrl(o)}&print=1">Print A4 Invoice</a>
@@ -976,6 +1028,7 @@ function acc(){
    ${kpi('Expenses',rs(exTot),`${exR.length} entries`)}
    ${kpi('NET PROFIT',rs(net),'profit minus expenses',net>=0?'grn':'red')}
    ${kpi('Delivery collected',rs(A.delivery),'not counted in profit')}
+   ${kpi('Baqaya (udhaar) abhi tak',rs(D.orders.reduce((a,o)=>a+dueOf(o),0)),'customers se lene hain','red')}
    ${kpi('Online payments pending',rs(L.filter(o=>o.source!=='store'&&o.payment!=='COD'&&!o.paid).reduce((a,o)=>a+o.total,0)),'not yet marked paid','red')}</div>
   ${noCost?`<div class="panel" style="border-color:var(--red)">⚠ ${noCost} order(s) have perfumes without a <b>cost price</b>, so profit looks higher than real. Open <b>Products &gt; Edit</b> and fill "Cost (Rs.)" for every size.</div>`:''}
   <div class="g2"><div class="panel"><h2 style="font-size:20px">Monthly sales & profit (last 12 months)</h2><div class="lg"><i style="background:var(--gold)"></i>Sales <i style="background:#4fbf78"></i>Profit</div>${barChart(mLab,[{name:'Sales',color:'#c9a24b',values:mRev.map(x=>x.rev)},{name:'Profit',color:'#4fbf78',values:mRev.map(x=>x.profit)}])}</div>
