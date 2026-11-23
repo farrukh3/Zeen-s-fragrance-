@@ -380,22 +380,24 @@ module.exports = async (req, res) => {
         if (!n) return send(404, { error: 'List nahi mili' });
         if (n.status !== 'open') return send(400, { error: 'Ye list pehle hi done ho chuki hai' });
         const products = await getProducts();
-        const got = body.got || {}, pr = body.prices || {};
+        const got = body.got || {}, pr = body.prices || {}, costs = au.perms.has('acc') && body.costs && typeof body.costs === 'object' ? body.costs : {};
         const adds = [];
         for (const l of n.lines) {
           const q = Math.max(0, Math.min(10000, Math.round(+got[l.id] || 0)));
           if (!q) continue;
           const p = products.find((x) => x.id === l.pid);
           if (!p) return send(400, { error: l.pname + ' product ab maujood nahi' });
-          let v = p.variants.find((x) => normSize(x.size) === l.size);
+          let v = p.variants.find((x) => normSize(x.size) === l.size), fresh = false;
           if (!v) {
+            fresh = true;
             const price = Math.round(+(pr[l.id] && pr[l.id].price));
             if (!(price > 0)) return send(400, { error: `${l.pname} ${l.size}: ye size pehle nahi tha, price daalein` });
             const cost = au.perms.has('acc') ? Math.max(0, Math.round(+(pr[l.id] && pr[l.id].cost) || 0)) : 0;
             v = { size: l.size, price, cost, discount: 0, stock: 0, min: 3 };
             p.variants.push(v);
           }
-          adds.push({ l, p, v, q });
+          const kc = costs[l.id] === '' || costs[l.id] == null ? NaN : Math.round(+costs[l.id]);
+          adds.push({ l, p, v, q, fresh, kc: kc >= 0 && kc <= 10000000 ? kc : null });
         }
         if (!adds.length) return send(400, { error: 'Kuch bhi mila nahi likha, pehle quantity daalein (ya list delete kar dein)' });
         const at = new Date().toISOString(), log = (await db.get('stocklog')) || [];
@@ -403,7 +405,15 @@ module.exports = async (req, res) => {
           a.v.stock += a.q;
           log.unshift({ at, by: au.name, pid: a.p.id, pname: a.p.name, size: a.v.size, delta: a.q, after: a.v.stock, reason: 'Requirement: ' + n.title + (a.l.tester ? ' (Tester)' : '') });
         }
-        n.lines = adds.map((a) => ({ ...a.l, got: a.q }));
+        let bill = 0;
+        for (const a of adds) {
+          const unit = a.kc != null ? a.kc : Math.max(0, +a.v.cost || 0);
+          if (au.perms.has('acc')) { a.unit = unit; bill += unit * a.q; }
+          if (a.kc != null && !a.fresh && body.updateCost === true) a.v.cost = a.kc; // latest purchase cost becomes the product cost
+          if (a.fresh && a.kc != null) a.v.cost = a.kc;
+        }
+        n.lines = adds.map((a) => ({ ...a.l, got: a.q, ...(a.unit != null ? { unitCost: a.unit } : {}) }));
+        if (au.perms.has('acc')) n.billTotal = bill;
         n.status = 'done'; n.doneAt = at; n.doneBy = au.name;
         await db.set('products', products);
         await db.set('stocklog', log.slice(0, 1000));
@@ -423,7 +433,8 @@ module.exports = async (req, res) => {
           orders = orders.map(L.stripCost);
         }
         const stocklog = au.perms.has('prod') ? ((await db.get('stocklog')) || []).slice(0, 600) : [];
-        const needs = au.perms.has('prod') ? ((await db.get('needs')) || []) : [];
+        let needs = au.perms.has('prod') ? ((await db.get('needs')) || []) : [];
+        if (!au.perms.has('acc')) needs = needs.map(({ billTotal, ...n }) => ({ ...n, lines: n.lines.map(({ unitCost, ...l }) => l) }));
         return send(200, {
           stocklog, needs, settings, products, orders, coupons, expenses: seeCost ? expenses0 : [], requests, reviews: au.perms.has('rev') ? reviews : [],
           staff: au.owner ? staff.map(({ salt, hash, ...x }) => x) : [],
