@@ -112,6 +112,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--gold)}
 .oc .oa{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.oc .or{text-align:right;font-size:13px;align-self:center}.oc .or b{font-size:16px;color:var(--gold)}.oc .ob{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .oc .of2{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
 .oh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.lnk{cursor:pointer;transition:transform .12s,box-shadow .12s}.lnk:hover{box-shadow:0 8px 22px rgba(184,138,42,.22)}.lnk:active{transform:scale(.97)}.lnk .go{position:absolute;right:14px;bottom:10px;font-style:normal;font-size:22px;line-height:1;color:var(--gold)}
 .bq{border-left:4px solid var(--red)}
 .nrow{display:grid;grid-template-columns:1.2fr 1fr auto auto;gap:6px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:14px;background:#fff;margin-bottom:8px}
 .nrow .rp{grid-column:1/-1}
@@ -309,7 +310,12 @@ function dash(){
   <div class="g2"><div class="panel"><div class="ph2"><div><h2 style="font-size:18px">Low / out of stock</h2><span class="mut">Reorder these soon</span></div><button class="btn g s" id="dprod">Products →</button></div>
    ${low.length?`<table style="min-width:0"><tbody>${low.slice(0,10).map(([p,v,m])=>`<tr><td><b>${esc(p.name)}</b> <span class="mut">${esc(v.size)}</span></td><td style="text-align:right">${v.stock===0?'<span class="pill cancelled">Out of stock</span>':`<span class="pill pending">${v.stock} left</span> <small class="mut">min ${m}</small>`}</td></tr>`).join('')}</tbody></table>${low.length>10?`<p class="mut">+${low.length-10} aur… Products me dekhein</p>`:''}`:'<span class="mut">Sab stock theek hai.</span>'}</div>
    <div class="panel"><h2 style="font-size:18px">Recent orders</h2>${ordTable(D.orders.slice(0,5),false)}</div></div>`);
+  const GO={"Today's sales":['ord'],"Today's profit":['acc'],"This month":['ord'],"Profit this month":['acc'],"Total sales":['ord'],"Pending orders":['ord','pending'],"Baqaya (udhaar)":['baq'],"Waiting for DC":['ord'],"Customer requests":['req'],"Stock (units)":['prod'],"Low stock":['prod'],"Out of stock":['prod']};
+  document.querySelectorAll('#main .stat').forEach(el=>{const g=GO[el.firstElementChild.textContent];if(g&&can(g[0]==='baq'?'ord':g[0])){el.classList.add('lnk');el.dataset.go=g[0];if(g[1])el.dataset.f=g[1];el.tabIndex=0;el.setAttribute('role','button');el.insertAdjacentHTML('beforeend','<i class="go">›</i>')}});
+  const goTo=el=>{const c=el.closest('[data-go]');if(!c)return false;if(c.dataset.go==='ord')oFilter=c.dataset.f||'all';tab=c.dataset.go;draw();scrollTo(0,0);return true};
+  $('#main').onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-go]')){e.preventDefault();goTo(e.target)}};
   $('#main').onclick=e=>{
+    if(goTo(e.target))return;
     const t=e.target.closest('[data-tg]');if(t){const el=$('#'+t.dataset.tg),on=el.style.display==='none';el.style.display=on?'block':'none';t.textContent=on?'Hide table':'Show table';return}
     const d=e.target.closest('[data-dd]');if(d){DASH.d=+d.dataset.dd;return dash()}
     if(e.target.closest('#dsell')){tab='sell';return draw()}
