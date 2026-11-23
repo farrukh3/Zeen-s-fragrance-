@@ -731,6 +731,9 @@ function req(){
 // ---------- requirement (restock) lists ----------
 const NSZ=['100ml','50ml','30ml','10ml'];
 let NS={};
+const nSz=x=>String(x||'').toLowerCase().replace(/\s+/g,'');
+function nCost(pid,size){const p=D.products.find(x=>x.id===pid),v=p&&p.variants.find(x=>nSz(x.size)===nSz(size));return v?{has:true,cost:Math.max(0,+v.cost||0)}:{has:false,cost:0}}
+const nTot=lines=>lines.reduce((a,l)=>a+nCost(l.pid,l.size).cost*l.qty,0);
 function needText(n){return `*${n.title}*\n`+n.lines.map((l,i)=>`${i+1}. ${l.pname} - ${l.size} x ${l.qty}${l.tester?' (Tester)':''}`).join('\n')+`\n\nTotal: ${n.lines.reduce((a,l)=>a+l.qty,0)} pcs`}
 function need(){
   NS={};
@@ -739,11 +742,11 @@ function need(){
   M(`<h2>Requirement</h2><p class="mut">Jo maal mangwana hai uski list banao (100ml / 50ml / 30ml / 10ml). Maal aane par "Maal aa gaya" dabao: jo mila wo seedha perfume ke stock me add hoga aur baki list se delete.</p>
   <div class="bar"><button class="btn" id="nn">+ Nayi list</button></div>
   ${open.length?open.map(n=>`<div class="ncard"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-size:16px">${esc(n.title)}${n.auto?' <span class="pill pending">Auto</span>':''}</b><span class="mut" style="font-size:12.5px">${dt(n.createdAt)} · ${esc(n.by||'')}</span></div>
-   <div style="margin:8px 0">${n.lines.map(l=>`<div class="nl"><span>${esc(l.pname)} <span class="pill">${esc(l.size)}</span>${l.tester?' <span class="pill pending">Tester</span>':''}</span><b>× ${l.qty}</b></div>`).join('')}</div>
-   <div class="mut" style="margin-bottom:8px">Total ${n.lines.reduce((a,l)=>a+l.qty,0)} pcs</div>
+   <div style="margin:8px 0">${n.lines.map(l=>`<div class="nl"><span>${esc(l.pname)} <span class="pill">${esc(l.size)}</span>${l.tester?' <span class="pill pending">Tester</span>':''}</span><b>× ${l.qty}${can('acc')?(()=>{const c=nCost(l.pid,l.size);return c.has?`<br><small class="mut" style="font-weight:400">${rs(c.cost)} = ${rs(c.cost*l.qty)}</small>`:`<br><small class="low" style="font-weight:400">naya size</small>`})():''}</b></div>`).join('')}</div>
+   <div class="mut" style="margin-bottom:8px">Total ${n.lines.reduce((a,l)=>a+l.qty,0)} pcs${can('acc')?` · <b style="color:var(--ink)">Andaza bill (cost): ${rs(nTot(n.lines))}</b>`:''}</div>
    <div class="bar" style="margin:0"><button class="btn s" data-rc="${n.id}">✅ Maal aa gaya</button><button class="btn g s" data-wa="${n.id}">WhatsApp</button><button class="btn g s" data-cp="${n.id}">Copy</button><button class="btn g s" data-ed="${n.id}">Edit</button><button class="btn r s" data-dl="${n.id}">Delete</button></div></div>`).join(''):'<div class="panel mut">Koi khuli list nahi. "+ Nayi list" se banao.</div>'}
   ${done.length?`<h3 style="margin:18px 0 8px">Pichli lists (done)</h3>`+done.map(n=>`<div class="ncard" style="box-shadow:none"><div style="display:flex;justify-content:space-between"><b>${esc(n.title)}</b><span class="mut" style="font-size:12.5px">${dt(n.doneAt)} · ${esc(n.doneBy||'')}</span></div>
-   ${n.lines.map(l=>`<div class="nl"><span>${esc(l.pname)} <span class="pill">${esc(l.size)}</span>${l.tester?' <span class="pill pending">Tester</span>':''}</span><b class="grn2">+${l.got}</b></div>`).join('')}</div>`).join(''):''}`);
+   ${n.lines.map(l=>`<div class="nl"><span>${esc(l.pname)} <span class="pill">${esc(l.size)}</span>${l.tester?' <span class="pill pending">Tester</span>':''}</span><b class="grn2">+${l.got}${l.unitCost!=null?` <small class="mut" style="font-weight:400">@ ${rs(l.unitCost)}</small>`:''}</b></div>`).join('')}${n.billTotal!=null?`<div class="nl"><span><b>Asli bill</b></span><b>${rs(n.billTotal)}</b></div>`:''}</div>`).join(''):''}`);
   $('#nn').onclick=()=>needEdit(null);
   $('#main').onclick=async e=>{
     const g=k=>{const b=e.target.closest('['+k+']');return b?open.find(n=>n.id===b.getAttribute(k)):null};
@@ -761,10 +764,14 @@ function needEdit(n){
     M(`<div class="bar" style="margin-bottom:6px"><button class="btn g s" id="nb">← Wapis</button></div><h2>${n?'List edit karo':'Nayi requirement list'}</h2>
     <label>List ka naam<input id="nt" maxlength="60" value="${esc(n?n.title:'Requirement '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'}))}"></label>
     <datalist id="dlp">${D.products.map(p=>`<option value="${esc(p.name)}">`).join('')}</datalist>
-    <div id="nr" style="margin-top:10px">${rows.map((r,i)=>`<div class="nrow"><input class="rp" list="dlp" placeholder="Perfume ka naam (list se chuno)" value="${esc(r.pname)}" data-i="${i}"><select class="rs" data-i="${i}">${NSZ.map(z=>`<option ${r.size===z?'selected':''}>${z}</option>`).join('')}</select><input class="rq" type="number" inputmode="numeric" min="1" value="${r.qty}" data-i="${i}" placeholder="Qty"><label class="tk"><input type="checkbox" class="rt" data-i="${i}" ${r.tester?'checked':''}>Tester</label><button class="btn g nrx" data-x="${i}" aria-label="Hatao">✕</button></div>`).join('')}</div>
+    <div id="nr" style="margin-top:10px">${rows.map((r,i)=>`<div class="nrow"><input class="rp" list="dlp" placeholder="Perfume ka naam (list se chuno)" value="${esc(r.pname)}" data-i="${i}"><select class="rs" data-i="${i}">${NSZ.map(z=>`<option ${r.size===z?'selected':''}>${z}</option>`).join('')}</select><input class="rq" type="number" inputmode="numeric" min="1" value="${r.qty}" data-i="${i}" placeholder="Qty"><label class="tk"><input type="checkbox" class="rt" data-i="${i}" ${r.tester?'checked':''}>Tester</label><button class="btn g nrx" data-x="${i}" aria-label="Hatao">✕</button>${can('acc')?`<div class="nc mut" data-c="${i}" style="grid-column:1/-1;font-size:12.5px"></div>`:''}</div>`).join('')}</div>
+    ${can('acc')?'<div class="panel" style="margin-top:8px"><b>Andaza bill (cost): <span id="ntot">Rs. 0</span></b></div>':''}
     <div class="bar"><button class="btn g" id="na">+ Aur perfume</button><button class="btn g" id="nlow">Kam stock wale add karo</button></div>
     <div class="bar"><button class="btn" id="nsv" style="flex:1">Save list</button></div>`);
     $('#nb').onclick=()=>need();
+    const costUpd=()=>{if(!can('acc'))return;let tot=0;document.querySelectorAll('.nrow').forEach((el,i)=>{const nm=el.querySelector('.rp').value.trim().toLowerCase(),p=D.products.find(x=>x.name.toLowerCase()===nm),sz=el.querySelector('.rs').value,q=+el.querySelector('.rq').value||0,c=p?nCost(p.id,sz):{has:false,cost:0},t=el.querySelector('[data-c]');
+      if(c.has){tot+=c.cost*q;t.textContent=`Cost ${rs(c.cost)} × ${q} = ${rs(c.cost*q)}`}else t.textContent=p?'Ye size abhi product me nahi hai, maal aane par cost daalenge':''});$('#ntot').textContent=rs(tot)};
+    $('#nr').addEventListener('input',costUpd);$('#nr').addEventListener('change',costUpd);costUpd();
     $('#nt').oninput=()=>{};
     const sync=()=>{document.querySelectorAll('.nrow').forEach((el,i)=>{const r=rows[i];r.pname=el.querySelector('.rp').value;r.size=el.querySelector('.rs').value;r.qty=+el.querySelector('.rq').value;r.tester=el.querySelector('.rt').checked})};
     $('#na').onclick=()=>{sync();rows.push({pname:'',size:'50ml',qty:10});draw_();const a=document.querySelectorAll('.rp');a[a.length-1].focus()};
@@ -782,17 +789,24 @@ function needRecv(n){
   M(`<div class="bar" style="margin-bottom:6px"><button class="btn g s" id="rb">← Wapis</button></div><h2>Maal aa gaya: ${esc(n.title)}</h2>
   <p class="mut">Har perfume ke samne jitna asal me mila wo likho. 0 likha to wo list se delete ho jayega. Done dabane par jo mila wo stock me add ho jayega.</p>
   ${n.lines.map(l=>`<div class="ncard"><div class="rcv"><div><b>${esc(l.pname)}</b> <span class="pill">${esc(l.size)}</span>${l.tester?' <span class="pill pending">Tester</span>':''}<div class="mut" style="font-size:12.5px">Mangwaya: ${l.qty}</div></div><input type="number" inputmode="numeric" min="0" class="gq" data-l="${l.id}" value="${l.qty}" aria-label="Mila"></div>
+   ${can('acc')?`<div class="rcv" style="margin-top:8px"><div><span class="mut" style="font-size:12.5px">Cost per piece (Rs.)</span><div class="mut" style="font-size:12px" data-lt="${l.id}"></div></div><input type="number" inputmode="numeric" min="0" class="gk" data-l="${l.id}" value="${nCost(l.pid,l.size).has?nCost(l.pid,l.size).cost:''}" placeholder="Cost" aria-label="Cost per piece"></div>`:''}
    <div class="bar" style="margin:8px 0 0"><button class="btn g s" data-all="${l.id}" data-q="${l.qty}">Poora mila</button><button class="btn g s" data-all="${l.id}" data-q="0">Nahi mila</button></div>
-   ${hasSize(l)?'':`<div class="sec" style="margin-top:8px"><span class="mut">Ye size is perfume me pehle nahi tha, naya size ban jayega. Price daalein:</span><div class="rcv"><input type="number" inputmode="numeric" class="gp" data-l="${l.id}" placeholder="Bechne ki price (Rs)"><input type="number" inputmode="numeric" class="gc" data-l="${l.id}" placeholder="Cost" style="${can('acc')?'':'display:none'}"></div></div>`}</div>`).join('')}
+   ${hasSize(l)?'':`<div class="sec" style="margin-top:8px"><span class="mut">Ye size is perfume me pehle nahi tha, naya size ban jayega. Price daalein:</span><div class="rcv"><input type="number" inputmode="numeric" class="gp" data-l="${l.id}" placeholder="Bechne ki price (Rs)"><input type="number" inputmode="numeric" class="gc" data-l="${l.id}" placeholder="Cost" style="display:none"></div></div>`}</div>`).join('')}
+  ${can('acc')?`<div class="panel" style="margin-top:4px"><div class="row"><span>Andaza bill (mangwaya × purani cost)</span><b id="bEst">-</b></div><div class="row"><span>Asli bill (jo mila × cost)</span><b id="bAct">-</b></div><div class="row"><span>Farq</span><b id="bDif">-</b></div>
+   <label style="flex-direction:row;display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="gucost" checked style="width:20px;height:20px;accent-color:var(--gold)">Jo cost badli hai wo product me bhi update karo (aage ke profit isi cost se banenge)</label></div>`:''}
   <div class="bar"><button class="btn" id="rd" style="flex:1">Done: jo mila add karo, baki delete</button></div>`);
   $('#rb').onclick=()=>need();
-  $('#main').onclick=e=>{const b=e.target.closest('[data-all]');if(b)document.querySelector('.gq[data-l="'+b.dataset.all+'"]').value=b.dataset.q};
+  const recalc=()=>{if(!can('acc'))return;let est=0,act=0;n.lines.forEach(l=>{const q=Math.max(0,Math.round(+document.querySelector('.gq[data-l="'+l.id+'"]').value||0)),k=+document.querySelector('.gk[data-l="'+l.id+'"]').value||0,old=nCost(l.pid,l.size).cost;est+=l.qty*old;act+=q*k;const t=document.querySelector('[data-lt="'+l.id+'"]');t.innerHTML=(q&&k?`${q} × ${rs(k)} = ${rs(q*k)}`:'')+(nCost(l.pid,l.size).has&&q&&k!==old?` <span class="low">(purani cost ${rs(old)})</span>`:'')});
+    $('#bEst').textContent=rs(est);$('#bAct').textContent=rs(act);const d=act-est;$('#bDif').textContent=(d>0?'+':d<0?'-':'')+rs(Math.abs(d))+(d>0?' zyada':d<0?' kam':'');$('#bDif').className=d>0?'low':d<0?'grn2':''};
+  $('#main').addEventListener('input',recalc);recalc();
+  $('#main').onclick=e=>{const b=e.target.closest('[data-all]');if(b){document.querySelector('.gq[data-l="'+b.dataset.all+'"]').value=b.dataset.q;recalc()}};
   $('#rd').onclick=async()=>{const got={},prices={};let tot=0;
     document.querySelectorAll('.gq').forEach(i=>{const q=Math.max(0,Math.round(+i.value||0));got[i.dataset.l]=q;tot+=q});
-    document.querySelectorAll('.gp').forEach(i=>{const id=i.dataset.l;prices[id]={price:+i.value,cost:+(document.querySelector('.gc[data-l="'+id+'"]')||{}).value||0}});
+    document.querySelectorAll('.gp').forEach(i=>{const id=i.dataset.l;prices[id]={price:+i.value,cost:+(document.querySelector('.gk[data-l="'+id+'"]')||{}).value||0}});
+    const costs={};document.querySelectorAll('.gk').forEach(i=>{if(i.value!=='')costs[i.dataset.l]=+i.value});
     if(!tot)return toast('Kuch bhi mila nahi likha. Quantity daalein ya list delete karein',1);
     if(!confirm(`${tot} pcs stock me add honge. Jo 0 hai wo list se hat jayega. Theek hai?`))return;
-    try{const r=await api('admin/need/'+n.id+'/receive','POST',{got,prices});await load();const fl=D.orders.filter(canFill).length;toast('Stock add ho gaya ('+r.added+' items)'+(fl?`. ${fl} pending order ab complete ho sakte hain (Orders me dekhein)`:''))}catch(x){toast(x.message,1)}};
+    try{const r=await api('admin/need/'+n.id+'/receive','POST',{got,prices,costs,updateCost:!!($('#gucost')&&$('#gucost').checked)});await load();const fl=D.orders.filter(canFill).length;toast('Stock add ho gaya ('+r.added+' items)'+(fl?`. ${fl} pending order ab complete ho sakte hain (Orders me dekhein)`:''))}catch(x){toast(x.message,1)}};
 }
 
 
