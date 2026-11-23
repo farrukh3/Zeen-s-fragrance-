@@ -72,6 +72,8 @@ async function getProducts() {
 }
 const getOrders = async () => (await db.get('orders')) || [];
 const getCoupons = async () => (await db.get('coupons')) || [];
+const getDeals = async () => (await db.get('deals')) || [];
+const dealLive = (d, now = Date.now()) => d.active !== false && now >= Date.parse(d.start) && now <= Date.parse(d.end);
 const getExpenses = async () => (await db.get('expenses')) || [];
 const getRequests = async () => (await db.get('requests')) || [];
 const getStaff = async () => (await db.get('staff')) || [];
@@ -121,10 +123,12 @@ module.exports = async (req, res) => {
 
     // ===== public =====
     if (method === 'GET' && a === 'shop') {
-      const [settings, products, reviews] = await Promise.all([getSettings(), getProducts(), getReviews()]);
+      const [settings, products, reviews, deals] = await Promise.all([getSettings(), getProducts(), getReviews(), getDeals()]);
+      const nowMs = Date.now();
+      const liveDeals = deals.filter((d) => dealLive(d, nowMs)).map(({ id, title, subtitle, items, price, start, end, image }) => ({ id, title, subtitle, items, price, start, end, image: image || '' }));
       const rv = reviews.filter((r) => r.status === 'approved').sort((x, y) => (y.createdAt || '').localeCompare(x.createdAt || '')).slice(0, 40)
         .map(({ id, name, rating, text, source, createdAt }) => ({ id, name, rating, text, source, createdAt }));
-      return send(200, { settings, products: products.filter((p) => p.active).map((p) => L.publicProduct(p, settings)), reviews: rv });
+      return send(200, { settings, products: products.filter((p) => p.active).map((p) => L.publicProduct(p, settings)), reviews: rv, deals: liveDeals, now: nowMs });
     }
 
     if (method === 'GET' && a === 'img' && b) {
@@ -177,7 +181,30 @@ module.exports = async (req, res) => {
         if (oldOrders.some((o) => o.status !== 'cancelled' && o.paymentRef && o.paymentRef.toLowerCase().replace(/[^a-z0-9]/g, '') === refKey))
           return send(400, { error: 'Yeh Transaction ID pehle kisi order mein use ho chuki hai. Sahi ID likhein.' });
       }
-      const lines = L.buildLines(body.items, products, settings, { onlyActive: true });
+      // deal bundles in the cart are expanded into normal product lines, priced so that the bundle adds up to the deal price
+      const deals = await getDeals();
+      const flat = [], groups = [];
+      for (const it of Array.isArray(body.items) ? body.items : []) {
+        if (it && it.deal) {
+          const d = deals.find((x) => x.id === String(it.deal));
+          const n = L.clamp(Math.round(L.num(it.qty, 1)), 1, 10);
+          if (!d || !dealLive(d)) return send(400, { error: 'Ek deal khatam ho chuki hai. Cart se hata kar dobara dekhein.' });
+          groups.push({ d, n, start: flat.length });
+          for (const di of d.items) flat.push({ pid: di.pid, size: di.size, qty: di.qty * n });
+        } else flat.push(it);
+      }
+      const lines = L.buildLines(flat, products, settings, { onlyActive: true });
+      for (const g of groups) {
+        const seg = lines.slice(g.start, g.start + g.d.items.length);
+        const per = seg.map((l, j) => l.unit * g.d.items[j].qty); // normal value of one bundle, line by line
+        const S = per.reduce((a, x) => a + x, 0) || 1;
+        let acc = 0;
+        seg.forEach((l, j) => {
+          const share = j === seg.length - 1 ? g.d.price - acc : Math.round((g.d.price * per[j]) / S);
+          acc += share;
+          l.total = share * g.n; l.unit = Math.round(l.total / l.qty); l.deal = g.d.title;
+        });
+      }
       if (lines.reduce((a, l) => a + l.qty, 0) > 30) return send(400, { error: 'Itne zyada perfume ke liye humein WhatsApp par message karein' });
       if (await limited(req, 'orderph', 4, 3600, ':' + customer.phone.replace(/\D/g, ''))) return send(429, TOO_MANY);
       const coupon = coupons.find((x) => x.code === str(body.coupon, 30).toUpperCase());
@@ -422,7 +449,7 @@ module.exports = async (req, res) => {
       }
 
       if (method === 'GET' && b === 'data') {
-        const [settings, products0, orders0, coupons, expenses0, requests, reviews, staff] = await Promise.all([getSettings(), getProducts(), getOrders(), getCoupons(), getExpenses(), getRequests(), getReviews(), getStaff()]);
+        const [settings, products0, orders0, coupons, expenses0, requests, reviews, staff, deals] = await Promise.all([getSettings(), getProducts(), getOrders(), getCoupons(), getExpenses(), getRequests(), getReviews(), getStaff(), getDeals()]);
         let products = products0, orders = orders0;
         let changed = false;
         for (const o of orders) if (!o.token) { o.token = newToken(); changed = true; }
@@ -436,7 +463,7 @@ module.exports = async (req, res) => {
         let needs = au.perms.has('prod') ? ((await db.get('needs')) || []) : [];
         if (!au.perms.has('acc')) needs = needs.map(({ billTotal, ...n }) => ({ ...n, lines: n.lines.map(({ unitCost, ...l }) => l) }));
         return send(200, {
-          stocklog, needs, settings, products, orders, coupons, expenses: seeCost ? expenses0 : [], requests, reviews: au.perms.has('rev') ? reviews : [],
+          stocklog, needs, settings, products, orders, coupons, deals: au.perms.has('off') ? deals : [], expenses: seeCost ? expenses0 : [], requests, reviews: au.perms.has('rev') ? reviews : [],
           staff: au.owner ? staff.map(({ salt, hash, ...x }) => x) : [],
           me: { owner: au.owner, name: au.name, perms: [...au.perms] },
         });
@@ -455,7 +482,7 @@ module.exports = async (req, res) => {
       }
 
       if (method === 'POST' && b === 'image') {
-        if (!au.perms.has('prod') && !au.perms.has('set')) need('prod');
+        if (!au.perms.has('prod') && !au.perms.has('set') && !au.perms.has('off')) need('prod');
         const body = await readBody(req, 1300000);
         const d = String(body.dataUrl || '');
         if (!/^data:image\/(jpeg|png|webp);base64,/.test(d)) return send(400, { error: 'Sirf JPG/PNG/WEBP image' });
@@ -842,6 +869,41 @@ module.exports = async (req, res) => {
       if (method === 'DELETE' && b === 'coupon' && c) {
         need('off');
         await db.set('coupons', (await getCoupons()).filter((x) => x.code !== c));
+        return send(200, { ok: true });
+      }
+
+      // ----- time-limited deals (bundle of perfumes at one special price) -----
+      if (method === 'POST' && b === 'deal' && !c) {
+        need('off');
+        const body = await readBody(req);
+        const products = await getProducts();
+        const items = (Array.isArray(body.items) ? body.items : []).slice(0, 6).map((it) => {
+          const p = products.find((x) => x.id === str(it.pid, 40)), v = p && p.variants.find((x) => x.size === str(it.size, 20));
+          const qty = Math.round(+it.qty);
+          return p && v && qty >= 1 && qty <= 5 ? { pid: p.id, size: v.size, qty } : null;
+        }).filter(Boolean);
+        if (!items.length) return send(400, { error: 'Kam az kam ek perfume (size ke saath) chunein' });
+        const price = Math.round(+body.price);
+        if (!(price > 0 && price <= 10000000)) return send(400, { error: 'Deal ki price likhein' });
+        const st = Date.parse(body.start), en = Date.parse(body.end);
+        if (!(st > 0) || !(en > 0)) return send(400, { error: 'Shuru aur khatam hone ka waqt chunein' });
+        if (en <= st) return send(400, { error: 'Khatam hone ka waqt shuru se baad ka hona chahiye' });
+        const title = str(body.title, 60);
+        if (!title) return send(400, { error: 'Deal ka naam likhein' });
+        const list = await getDeals();
+        const i = list.findIndex((x) => x.id === str(body.id, 40));
+        const image = /^[a-f0-9]{16}$/.test(String(body.image || '')) ? String(body.image) : '';
+        if (i >= 0 && list[i].image && list[i].image !== image) await db.del('img:' + list[i].image);
+        const rec = { image, id: i >= 0 ? list[i].id : 'd_' + crypto.randomBytes(5).toString('hex'), title, subtitle: str(body.subtitle, 100), items, price, start: new Date(st).toISOString(), end: new Date(en).toISOString(), active: body.active !== false, createdAt: i >= 0 ? list[i].createdAt : new Date().toISOString() };
+        if (i >= 0) list[i] = rec; else list.unshift(rec);
+        await db.set('deals', list.slice(0, 30));
+        return send(200, { ok: true, id: rec.id });
+      }
+      if (method === 'DELETE' && b === 'deal' && c) {
+        need('off');
+        const all = await getDeals(), gone = all.find((x) => x.id === c);
+        if (gone && gone.image) await db.del('img:' + gone.image);
+        await db.set('deals', all.filter((x) => x.id !== c));
         return send(200, { ok: true });
       }
 
