@@ -115,6 +115,8 @@ section{padding:52px 0}
 .chip{border:1px solid var(--line);border-radius:999px;padding:7px 15px;font-size:14px;color:var(--mute)}
 .chip.on{background:var(--gold);border-color:var(--gold);color:var(--on);font-weight:600}
 .tools input,.tools select{width:auto;padding:8px 14px;border-radius:999px;font-size:14px}
+.ldr{display:flex;justify-content:center;gap:8px;margin:26px 0 8px}.ldr i{width:9px;height:9px;border-radius:50%;background:var(--gold);opacity:.25;animation:ld 1s infinite ease-in-out}.ldr i:nth-child(2){animation-delay:.15s}.ldr i:nth-child(3){animation-delay:.3s}@keyframes ld{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+.endn{display:flex;align-items:center;gap:14px;max-width:360px;margin:30px auto 6px;color:var(--gold)}.endn span{flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.6}.endn em{font:italic 15px 'Cormorant Garamond',serif;letter-spacing:.08em;color:var(--mute,#8a7a5a)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:.25s;position:relative;display:flex;flex-direction:column}
 .card:hover{transform:translateY(-6px);border-color:var(--gold);box-shadow:0 18px 40px color-mix(in srgb,var(--gold) 18%,transparent)}
@@ -422,16 +424,35 @@ function card(p){
     ${soldOut(p)?'<span class="sold">Out of stock · tap to request</span>':`<div class="pr"><span style="font-size:12px;color:var(--mute)">From</span><b>${rs(v.final)}</b>${v.pct?`<s>${rs(v.price)}</s>`:''}</div>`}
     </div></div>`;
 }
-const PAGE=12;let shown=PAGE;
+const PAGE=12;let shown=PAGE,CUR=[],io=null;
+// products load automatically as the visitor scrolls (no "load more" button)
+function moreUI(){
+  const mb=$('#moreBtn');if(!mb)return;
+  if(!CUR.length){mb.innerHTML='';return}
+  if(CUR.length>shown){
+    mb.innerHTML=window.IntersectionObserver?'<div class="ldr" aria-label="Loading"><i></i><i></i><i></i></div>':'<button class="btn" id="moreGo" style="padding:12px 28px">View more</button>';
+    if(window.IntersectionObserver){if(!io)io=new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting))loadMore()},{rootMargin:'600px 0px'});io.disconnect();io.observe(mb)}
+  }else{
+    if(io)io.disconnect();
+    mb.innerHTML=CUR.length>PAGE?`<div class="endn"><span></span><em>${CUR.length} fragrances</em><span></span></div>`:'';
+  }
+}
+function loadMore(){
+  if(CUR.length<=shown)return;
+  const from=shown;shown+=PAGE;
+  $('#grid').insertAdjacentHTML('beforeend',CUR.slice(from,shown).map(card).join(''));
+  moreUI();
+}
 function render(reset=true){
   if(reset===true||reset instanceof Event)shown=PAGE;
   const q=$('#q').value.toLowerCase().trim();
   let l=P.filter(p=>(cat==='all'||p.category===cat)&&(!q||(p.name+' '+Object.values(p.notes).flat().join(' ')+' '+p.description).toLowerCase().includes(q)));
   const s=$('#sort').value;
   if(s==='lo')l.sort((a,b)=>minV(a).final-minV(b).final);else if(s==='hi')l.sort((a,b)=>minV(b).final-minV(a).final);
+  CUR=l;
   $('#grid').innerHTML=l.length?l.slice(0,shown).map(card).join(''):'<div class="empty">No perfumes found.</div>';
-  let mb=$('#moreBtn');if(!mb){mb=document.createElement('div');mb.id='moreBtn';mb.style.cssText='text-align:center;margin:22px 0 4px';$('#grid').after(mb)}
-  mb.innerHTML=l.length>shown?`<button class="btn" id="moreGo" style="padding:12px 28px">Aur dikhao (${l.length-shown} baaki)</button>`:'';
+  let mb=$('#moreBtn');if(!mb){mb=document.createElement('div');mb.id='moreBtn';$('#grid').after(mb)}
+  moreUI();
   const ft=P.filter(p=>p.featured);
   $('#featured').style.display=ft.length?'':'none';$('#featGrid').innerHTML=ft.slice(0,8).map(card).join('');
   const off=P.filter(p=>!p.featured&&p.variants.some(v=>v.pct>0)&&!soldOut(p));
@@ -440,7 +461,7 @@ function render(reset=true){
   $('#offerGrid').innerHTML=off.slice(0,8).map(card).join('');
 }
 document.addEventListener('click',e=>{
-  if(e.target.closest('#moreGo')){shown+=PAGE;render(false);return}
+  if(e.target.closest('#moreGo')){loadMore();return}
   const c=e.target.closest('.card');if(c)return openP(c.dataset.id);
   const t=e.target.closest('[data-go]');if(t){cat=t.dataset.go;document.querySelectorAll('#cats .chip').forEach(x=>x.classList.toggle('on',x.dataset.c===cat));render();$('#shop').scrollIntoView({behavior:'smooth'});return}
   const ch=e.target.closest('[data-c]');if(ch){cat=ch.dataset.c;document.querySelectorAll('#cats .chip').forEach(x=>x.classList.toggle('on',x===ch));render()}
