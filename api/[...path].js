@@ -279,6 +279,20 @@ module.exports = async (req, res) => {
       const au = await getAuth(req);
       if (!au) return send(401, { error: 'Login zaroori hai' });
       const need = (p) => { if (!au.perms.has(p)) throw L.httpErr(403, 'Is kaam ki ijazat nahi hai'); };
+      const payRep = (o) => (o.payments || []).reduce((a, x) => a + x.amount, 0);
+      const dueOf = (o) => (o.udhaar && o.status !== 'cancelled' ? Math.max(0, o.total - payRep(o)) : 0);
+      const custKey = (o) => {
+        const cu = o.customer || {}, d = String(cu.phone || '').replace(/\D/g, '').slice(-10), nm = String(cu.name || '').toLowerCase().trim();
+        return d.length >= 10 ? d : nm && nm !== 'walk-in' ? 'n:' + nm : 'o:' + o.id;
+      };
+      const PMETH = ['Cash', 'Bank Transfer', 'Easypaisa', 'JazzCash', 'Card'];
+      const addPay = (o, amt, method, note) => {
+        const a = Math.min(amt, dueOf(o));
+        if (a <= 0) return 0;
+        o.payments = (o.payments || []).concat([{ id: 'py_' + crypto.randomBytes(4).toString('hex'), at: new Date().toISOString(), amount: a, method, note, by: au.name }]);
+        if (dueOf(o) <= 0) o.paid = true;
+        return a;
+      };
 
       // quick stock add/remove (with a log of who changed what)
       if (method === 'POST' && b === 'stock') {
@@ -482,7 +496,8 @@ module.exports = async (req, res) => {
         const orders = await getOrders();
         const o = orders.find((x) => x.id === c);
         if (!o) return send(404, { error: 'Order nahi mila' });
-        o.paid = body.paid !== false;
+        if (o.udhaar) { if (body.paid !== false) addPay(o, dueOf(o), o.payment === 'COD' ? 'Cash' : o.payment, ''); }
+        else o.paid = body.paid !== false;
         await db.set('orders', orders);
         return send(200, { ok: true });
       }
@@ -503,7 +518,7 @@ module.exports = async (req, res) => {
         }
         o.status = status;
         if (status === 'cancelled') { o.cancelReason = str(body.reason, 200); o.cancelledAt = new Date().toISOString(); }
-        if (status === 'delivered' && o.payment === 'COD') o.paid = true;
+        if (status === 'delivered' && o.payment === 'COD' && !o.udhaar) o.paid = true;
         await db.set('orders', orders);
         return send(200, { ok: true });
       }
@@ -539,6 +554,7 @@ module.exports = async (req, res) => {
           o.lines = newLines; o.subtotal = subtotal; o.discount = discount;
           o.total = subtotal - discount + (o.delivery || 0);
           o.returns[o.returns.length - 1].refund = oldTotal - o.total;
+          if (o.udhaar) o.paid = payRep(o) >= o.total;
         }
         await db.set('orders', orders);
         return send(200, { ok: true, total: o.total, cancelled: o.status === 'cancelled' });
@@ -561,6 +577,54 @@ module.exports = async (req, res) => {
       }
 
       // in-store sale (POS)
+      // ---- Udhaar (baad me payment): credit orders, partial payments ----
+      if (method === 'POST' && b === 'order' && c && parts[3] === 'credit') {
+        need('ord');
+        const body = await readBody(req);
+        const orders = await getOrders();
+        const o = orders.find((x) => x.id === c);
+        if (!o) return send(404, { error: 'Order nahi mila' });
+        if (o.status === 'cancelled') return send(400, { error: 'Cancelled order par udhaar nahi lag sakta' });
+        if (body.on === false) {
+          if ((o.payments || []).length) return send(400, { error: 'Is order par payment record ho chuki hai, udhaar hata nahi sakte' });
+          o.udhaar = false; o.paid = o.source === 'store' || (o.payment === 'COD' && o.status === 'delivered');
+        } else if (!o.udhaar) {
+          if (o.paid && o.source === 'online' && o.payment !== 'COD') return send(400, { error: 'Is order ki online payment pehle se mil chuki hai' });
+          o.udhaar = true; o.paid = false; o.payments = []; o.udhaarAt = new Date().toISOString();
+        }
+        await db.set('orders', orders);
+        return send(200, { ok: true });
+      }
+      if (method === 'POST' && b === 'order' && c && parts[3] === 'pay') {
+        need('ord');
+        const body = await readBody(req);
+        const orders = await getOrders();
+        const o = orders.find((x) => x.id === c);
+        if (!o || !o.udhaar) return send(404, { error: 'Udhaar order nahi mila' });
+        const amt = Math.round(+body.amount);
+        if (!(amt > 0)) return send(400, { error: 'Sahi amount likhein' });
+        if (amt > dueOf(o)) return send(400, { error: 'Amount baqaya se zyada hai (baqaya Rs. ' + dueOf(o) + ')' });
+        addPay(o, amt, PMETH.includes(body.method) ? body.method : 'Cash', str(body.note, 100));
+        await db.set('orders', orders);
+        return send(200, { ok: true });
+      }
+      if (method === 'POST' && b === 'udhaar' && c === 'pay') {
+        need('ord');
+        const body = await readBody(req);
+        const orders = await getOrders();
+        const key = str(body.key, 80);
+        const list = orders.filter((o) => dueOf(o) > 0 && custKey(o) === key).sort((x, y) => x.createdAt.localeCompare(y.createdAt));
+        const total = list.reduce((a, o) => a + dueOf(o), 0);
+        let amt = Math.round(+body.amount);
+        if (!list.length) return send(404, { error: 'Is customer ka baqaya nahi mila' });
+        if (!(amt > 0)) return send(400, { error: 'Sahi amount likhein' });
+        if (amt > total) return send(400, { error: 'Amount baqaya se zyada hai (baqaya Rs. ' + total + ')' });
+        const m = PMETH.includes(body.method) ? body.method : 'Cash', note = str(body.note, 100);
+        for (const o of list) { if (amt <= 0) break; amt -= addPay(o, amt, m, note); }
+        await db.set('orders', orders);
+        return send(200, { ok: true });
+      }
+
       if (method === 'POST' && b === 'sale') {
         need('sell');
         const body = await readBody(req);
@@ -579,6 +643,15 @@ module.exports = async (req, res) => {
           callInfo = { phone, name, address, city: str(body.city, 60), pay, dc, paid: pay !== 'COD' && body.paid === true };
           t.delivery = dc; t.total = t.total + dc;
         }
+        const ud = body.udhaar === true;
+        let advance = 0;
+        if (ud) {
+          const nm = str(body.customerName, 80), ph = str(body.customerPhone, 20);
+          if (!nm || nm.toLowerCase() === 'walk-in') return send(400, { error: 'Udhaar ke liye customer ka naam likhein' });
+          if (ph.replace(/\D/g, '').length < 10) return send(400, { error: 'Udhaar ke liye customer ka sahi phone number likhein' });
+          advance = Math.max(0, Math.round(+body.advance) || 0);
+          if (advance >= t.total) return send(400, { error: 'Advance poori payment ke barabar ya zyada hai, to udhaar nahi bante. Udhaar ka tick hata dein' });
+        }
         L.applyStock(products, lines, -1);
         const { no, id } = await nextOrderId();
         const order = callInfo ? {
@@ -592,6 +665,10 @@ module.exports = async (req, res) => {
           customer: { name: str(body.customerName, 80) || 'Walk-in', phone: str(body.customerPhone, 20), city: '', address: '', note: '' },
           lines, ...t, coupon: '',
         };
+        if (ud) {
+          order.udhaar = true; order.paid = false; order.udhaarAt = order.createdAt; order.payments = [];
+          if (advance > 0) order.payments.push({ id: 'py_' + crypto.randomBytes(4).toString('hex'), at: order.createdAt, amount: advance, method: PMETH.includes(body.payment) ? body.payment : 'Cash', note: 'Advance', by: au.name });
+        }
         await db.set('products', products);
         const orders = await getOrders();
         orders.unshift(order);
