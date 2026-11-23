@@ -112,6 +112,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--gold)}
 .oc .oa{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.oc .or{text-align:right;font-size:13px;align-self:center}.oc .or b{font-size:16px;color:var(--gold)}.oc .ob{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .oc .of2{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
 .oh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.pp button.oos{opacity:.75;border-style:dashed}
 .lnk{cursor:pointer;transition:transform .12s,box-shadow .12s}.lnk:hover{box-shadow:0 8px 22px rgba(184,138,42,.22)}.lnk:active{transform:scale(.97)}.lnk .go{position:absolute;right:14px;bottom:10px;font-style:normal;font-size:22px;line-height:1;color:var(--gold)}
 .bq{border-left:4px solid var(--red)}
 .nrow{display:grid;grid-template-columns:1.2fr 1fr auto auto;gap:6px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:14px;background:#fff;margin-bottom:8px}
@@ -231,6 +232,8 @@ function mobTables(){document.querySelectorAll('#main table').forEach(t=>{if(t.c
   t.dataset.rt='1';t.classList.add('rt');t.querySelectorAll('tbody tr').forEach(r=>[...r.children].forEach((td,i)=>{const l=ths[i]&&ths[i].textContent.trim();if(l&&!td.hasAttribute('colspan'))td.dataset.label=l}))})}
 new MutationObserver(()=>requestAnimationFrame(mobTables)).observe(document.getElementById('app')||document.body,{childList:true,subtree:true});
 const payRep=o=>(o.payments||[]).reduce((a,x)=>a+x.amount,0);
+const backN=o=>o.backorder&&o.status!=='cancelled'?o.lines.reduce((a,l)=>a+(l.back||0),0):0;
+const canFill=o=>backN(o)>0&&o.lines.some(l=>l.back>0&&((D.products.find(p=>p.id===l.pid)||{variants:[]}).variants.find(v=>v.size===l.size)||{stock:0}).stock>0);
 const dueOf=o=>o.udhaar&&o.status!=='cancelled'?Math.max(0,o.total-payRep(o)):0;
 const isPaid=o=>o.udhaar?dueOf(o)<=0:(o.source==='store'||o.paid||(o.payment==='COD'&&o.status==='delivered'));
 const ckey=o=>{const c=o.customer||{},d=String(c.phone||'').replace(/\D/g,'').slice(-10),n=String(c.name||'').toLowerCase().trim();return d.length>=10?d:n&&n!=='walk-in'?'n:'+n:'o:'+o.id};
@@ -295,6 +298,7 @@ function dash(){
    <div class="stat"><span>Total sales</span><b>${rs(sum(live))}</b><small class="mut">${live.length} orders</small></div>
    <div class="stat"><span>Pending orders</span><b>${D.orders.filter(o=>o.status==='pending').length}</b></div>
    <div class="stat"><span>Baqaya (udhaar)</span><b class="${D.orders.some(o=>dueOf(o)>0)?'red':''}">${rs(D.orders.reduce((a,o)=>a+dueOf(o),0))}</b><small class="mut">${new Set(D.orders.filter(o=>dueOf(o)>0).map(ckey)).size} customers</small></div>
+   <div class="stat"><span>Maal ka intezar</span><b class="${D.orders.some(o=>backN(o)>0)?'red':''}">${D.orders.filter(o=>backN(o)>0).length}</b><small class="mut">${D.orders.reduce((a,o)=>a+backN(o),0)} pcs customers ko dene hain</small></div>
    <div class="stat"><span>Waiting for DC</span><b>${D.orders.filter(o=>o.dcSet===false&&o.status!=='cancelled').length}</b><small class="mut">set delivery charges</small></div>
    <div class="stat"><span>Customer requests</span><b>${(D.requests||[]).filter(r=>r.status==='open').length}</b><small class="mut">out-of-stock demand</small></div>
    <div class="stat"><span>Stock (units)</span><b>${D.products.reduce((s,p)=>s+stock(p),0)}</b><small class="mut">${D.products.length} products · Value ${rs(val)}</small></div>
@@ -310,7 +314,7 @@ function dash(){
   <div class="g2"><div class="panel"><div class="ph2"><div><h2 style="font-size:18px">Low / out of stock</h2><span class="mut">Reorder these soon</span></div><button class="btn g s" id="dprod">Products →</button></div>
    ${low.length?`<table style="min-width:0"><tbody>${low.slice(0,10).map(([p,v,m])=>`<tr><td><b>${esc(p.name)}</b> <span class="mut">${esc(v.size)}</span></td><td style="text-align:right">${v.stock===0?'<span class="pill cancelled">Out of stock</span>':`<span class="pill pending">${v.stock} left</span> <small class="mut">min ${m}</small>`}</td></tr>`).join('')}</tbody></table>${low.length>10?`<p class="mut">+${low.length-10} aur… Products me dekhein</p>`:''}`:'<span class="mut">Sab stock theek hai.</span>'}</div>
    <div class="panel"><h2 style="font-size:18px">Recent orders</h2>${ordTable(D.orders.slice(0,5),false)}</div></div>`);
-  const GO={"Today's sales":['ord'],"Today's profit":['acc'],"This month":['ord'],"Profit this month":['acc'],"Total sales":['ord'],"Pending orders":['ord','pending'],"Baqaya (udhaar)":['baq'],"Waiting for DC":['ord'],"Customer requests":['req'],"Stock (units)":['prod'],"Low stock":['prod'],"Out of stock":['prod']};
+  const GO={"Today's sales":['ord'],"Today's profit":['acc'],"This month":['ord'],"Profit this month":['acc'],"Total sales":['ord'],"Pending orders":['ord','pending'],"Baqaya (udhaar)":['baq'],"Waiting for DC":['ord'],"Maal ka intezar":['ord','pending'],"Customer requests":['req'],"Stock (units)":['prod'],"Low stock":['prod'],"Out of stock":['prod']};
   document.querySelectorAll('#main .stat').forEach(el=>{const g=GO[el.firstElementChild.textContent];if(g&&can(g[0]==='baq'?'ord':g[0])){el.classList.add('lnk');el.dataset.go=g[0];if(g[1])el.dataset.f=g[1];el.tabIndex=0;el.setAttribute('role','button');el.insertAdjacentHTML('beforeend','<i class="go">›</i>')}});
   const goTo=el=>{const c=el.closest('[data-go]');if(!c)return false;if(c.dataset.go==='ord')oFilter=c.dataset.f||'all';tab=c.dataset.go;draw();scrollTo(0,0);return true};
   $('#main').onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-go]')){e.preventDefault();goTo(e.target)}};
@@ -507,7 +511,7 @@ function ordTable(list){
   if(!list.length)return '<span class="mut">No orders yet.</span>';
   return `<div class="ol">${list.map(o=>{
     const on=o.source!=='store',first=o.lines[0],more=o.lines.length-1;
-    const flags=[];if(o.channel==='call')flags.push('<span class="pill">📞 Call order</span>');if(dueOf(o)>0)flags.push(`<span class="pill cancelled">Baqaya ${rs(dueOf(o))}</span>`);else if(o.udhaar&&o.status!=='cancelled')flags.push('<span class="pill delivered">Udhaar clear</span>');
+    const flags=[];if(backN(o)>0)flags.push(canFill(o)?'<span class="pill delivered">Stock aa gaya, complete karo</span>':`<span class="pill pending">⏳ Maal ka intezar (${backN(o)})</span>`);if(o.channel==='call')flags.push('<span class="pill">📞 Call order</span>');if(dueOf(o)>0)flags.push(`<span class="pill cancelled">Baqaya ${rs(dueOf(o))}</span>`);else if(o.udhaar&&o.status!=='cancelled')flags.push('<span class="pill delivered">Udhaar clear</span>');
     if(on&&o.dcSet===false&&o.status!=='cancelled')flags.push('<span class="pill pending">DC pending</span>');
     if(on&&!o.udhaar&&o.status!=='cancelled'&&o.payment!=='COD'){flags.push(o.paid?'<span class="pill delivered">Paid</span>':'<span class="pill pending">Unpaid</span>');if(!o.proof&&o.channel!=='call')flags.push('<span class="pill cancelled">No proof</span>')}
     return `<div class="oc" data-oid="${esc(o.id)}" tabindex="0">
@@ -531,7 +535,7 @@ function orderView(o){
   <div class="sec"><div class="st">Customer</div><b>${esc(o.customer.name||'Walk-in')}</b>
    ${o.customer.phone?`<div><a href="tel:${esc(tel)}" class="lk">📞 ${esc(o.customer.phone)}</a></div>`:''}
    ${o.customer.address?`<div class="mut">📍 ${esc(o.customer.address)}, ${esc(o.customer.city)}</div>`:''}${o.customer.note?`<div class="mut"><i>“${esc(o.customer.note)}”</i></div>`:''}</div>
-  <div class="sec"><div class="st">Items</div><table style="min-width:0"><tbody>${o.lines.map(l=>`<tr><td>${esc(l.name)} <span class="mut">${esc(l.size)}</span><br><small class="mut">${rs(l.unit)} × ${l.qty}</small></td><td style="text-align:right">${rs(l.total)}</td></tr>`).join('')}
+  <div class="sec"><div class="st">Items</div><table style="min-width:0"><tbody>${o.lines.map(l=>`<tr><td>${esc(l.name)} <span class="mut">${esc(l.size)}</span><br><small class="mut">${rs(l.unit)} × ${l.qty}</small>${l.back?` <small class="low">⏳ ${l.back} pending</small>`:''}</td><td style="text-align:right">${rs(l.total)}</td></tr>`).join('')}
    <tr><td class="mut">Subtotal</td><td style="text-align:right">${rs(o.subtotal)}</td></tr>${o.discount?`<tr><td class="mut">Discount${o.coupon?' ('+esc(o.coupon)+')':''}</td><td style="text-align:right">− ${rs(o.discount)}</td></tr>`:''}
    ${on?`<tr><td class="mut">Delivery charges</td><td style="text-align:right">${o.dcSet===false?'<span class="pill pending">not set</span>':rs(o.delivery)}</td></tr>`:''}
    <tr><td><b>Total</b></td><td style="text-align:right"><b>${rs(o.total)}</b></td></tr>
@@ -546,6 +550,9 @@ function orderView(o){
     ${(o.payments||[]).map(x=>`<div class="lrow"><span>+${rs(x.amount)} · ${esc(x.method)}${x.note?' · '+esc(x.note):''}</span><span class="mut">${new Date(x.at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})} · ${esc(x.by||'')}</span></div>`).join('')}
     ${ed&&dueOf(o)>0?`<div class="g2" style="margin-top:8px"><label>Amount mila (Rs.)<input id="uamt" type="number" inputmode="numeric" min="1" max="${dueOf(o)}" value="${dueOf(o)}"></label><label>Kaise<select id="umt">${['Cash','Bank Transfer','Easypaisa','JazzCash','Card'].map(x=>`<option>${x}</option>`).join('')}</select></label></div><input id="unt" placeholder="Note (optional)" style="margin-top:6px"><div class="bar" style="margin:8px 0 0"><button class="btn s" id="upay">Payment mili</button>${(o.payments||[]).length?'':'<button class="btn g s" id="uoff">Udhaar hatao</button>'}</div>`:''}`
    :`${(on&&o.payment!=='COD'&&o.paid)?'<span class="mut">Online payment mil chuki hai.</span>':'<button class="btn g s" id="uon">Udhaar mark karo (customer baad me payment karega)</button>'}`}</div>`:''}
+  ${backN(o)>0?`<div class="sec bq"><div class="st">⏳ Maal ka intezar</div>${o.lines.filter(l=>l.back>0).map(l=>{const v=((D.products.find(p=>p.id===l.pid)||{variants:[]}).variants.find(x=>x.size===l.size)||{stock:0});return `<div class="lrow"><span>${esc(l.name)} ${esc(l.size)}: <b>${l.back}</b> pending</span><span class="mut">abhi stock ${v.stock}</span></div>`}).join('')}
+   <div class="mut" style="margin:6px 0">Ye maal Requirement list me chala gaya hai. Maal aane par (Requirement me "Maal aa gaya" karke) yahan "complete karo" dabayein, jitna stock hoga utna order me lag jayega, baaki pending rehga.</div>
+   ${ed?`<button class="btn s" id="bfl" ${canFill(o)?'':'disabled'}>Maal aa gaya, complete karo</button>`:''}</div>`:''}
   ${on&&!cancelled?`<div class="sec"><div class="st">Delivery charges (DC)</div>${o.dcSet===false?'<div class="mut">Pehle DC set karein, tab invoice banegi.</div>':`<div>Abhi: <b>${rs(o.delivery)}</b></div>`}
    ${ed?`<div class="bar" style="margin:8px 0 0"><input type="number" id="vdc" min="0" max="5000" placeholder="DC Rs." value="${o.dcSet===false?'':o.delivery}" style="max-width:130px"><button class="btn s" id="vdcb">${o.dcSet===false?'Set DC':'Update DC'}</button></div>`:''}</div>`:''}
   ${ed&&!cancelled?`<div class="sec"><div class="st">Order status</div><div class="bar" style="margin:0"><select id="vst" style="max-width:190px">${['pending','confirmed','shipped','delivered'].map(x=>`<option ${o.status===x?'selected':''}>${x}</option>`).join('')}</select><button class="btn s" id="vstb">Update status</button></div></div>`:''}
@@ -556,6 +563,7 @@ function orderView(o){
   const B=(id,f)=>{const e=$('#'+id);if(e)e.onclick=f};
   B('hc',()=>$('#ov').classList.remove('on'));B('vpf',()=>showProof(o));B('hp',()=>retForm(o));B('hx',()=>cancelOrd(o));B('hd',()=>delOrd(o));B('vwa',()=>waOrder(o));
   B('vpaid',async()=>{try{await api('admin/order/'+o.id+'/paid','POST',{paid:true});toast('Marked as paid');reopenOrd(o.id)}catch(x){toast(x.message,1)}});
+  B('bfl',async()=>{try{const r=await api('admin/order/'+o.id+'/fulfill','POST',{});toast(r.left?`${r.took} pcs lag gaye, ${r.left} abhi pending`:'Poora maal lag gaya. Ab order bhej sakte hain');reopenOrd(o.id)}catch(x){toast(x.message,1)}});
   B('uon',async()=>{try{await api('admin/order/'+o.id+'/credit','POST',{on:true});toast('Udhaar mark ho gaya');reopenOrd(o.id)}catch(x){toast(x.message,1)}});
   B('uoff',async()=>{try{await api('admin/order/'+o.id+'/credit','POST',{on:false});toast('Udhaar hata diya');reopenOrd(o.id)}catch(x){toast(x.message,1)}});
   B('upay',async()=>{try{await api('admin/order/'+o.id+'/pay','POST',{amount:+$('#uamt').value,method:$('#umt').value,note:$('#unt').value});toast('Payment record ho gayi');reopenOrd(o.id)}catch(x){toast(x.message,1)}});
@@ -730,7 +738,7 @@ function need(){
   const dt=x=>new Date(x).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
   M(`<h2>Requirement</h2><p class="mut">Jo maal mangwana hai uski list banao (100ml / 50ml / 30ml / 10ml). Maal aane par "Maal aa gaya" dabao: jo mila wo seedha perfume ke stock me add hoga aur baki list se delete.</p>
   <div class="bar"><button class="btn" id="nn">+ Nayi list</button></div>
-  ${open.length?open.map(n=>`<div class="ncard"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-size:16px">${esc(n.title)}</b><span class="mut" style="font-size:12.5px">${dt(n.createdAt)} · ${esc(n.by||'')}</span></div>
+  ${open.length?open.map(n=>`<div class="ncard"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b style="font-size:16px">${esc(n.title)}${n.auto?' <span class="pill pending">Auto</span>':''}</b><span class="mut" style="font-size:12.5px">${dt(n.createdAt)} · ${esc(n.by||'')}</span></div>
    <div style="margin:8px 0">${n.lines.map(l=>`<div class="nl"><span>${esc(l.pname)} <span class="pill">${esc(l.size)}</span>${l.tester?' <span class="pill pending">Tester</span>':''}</span><b>× ${l.qty}</b></div>`).join('')}</div>
    <div class="mut" style="margin-bottom:8px">Total ${n.lines.reduce((a,l)=>a+l.qty,0)} pcs</div>
    <div class="bar" style="margin:0"><button class="btn s" data-rc="${n.id}">✅ Maal aa gaya</button><button class="btn g s" data-wa="${n.id}">WhatsApp</button><button class="btn g s" data-cp="${n.id}">Copy</button><button class="btn g s" data-ed="${n.id}">Edit</button><button class="btn r s" data-dl="${n.id}">Delete</button></div></div>`).join(''):'<div class="panel mut">Koi khuli list nahi. "+ Nayi list" se banao.</div>'}
@@ -784,7 +792,7 @@ function needRecv(n){
     document.querySelectorAll('.gp').forEach(i=>{const id=i.dataset.l;prices[id]={price:+i.value,cost:+(document.querySelector('.gc[data-l="'+id+'"]')||{}).value||0}});
     if(!tot)return toast('Kuch bhi mila nahi likha. Quantity daalein ya list delete karein',1);
     if(!confirm(`${tot} pcs stock me add honge. Jo 0 hai wo list se hat jayega. Theek hai?`))return;
-    try{const r=await api('admin/need/'+n.id+'/receive','POST',{got,prices});toast('Stock add ho gaya ('+r.added+' items)');await load()}catch(x){toast(x.message,1)}};
+    try{const r=await api('admin/need/'+n.id+'/receive','POST',{got,prices});await load();const fl=D.orders.filter(canFill).length;toast('Stock add ho gaya ('+r.added+' items)'+(fl?`. ${fl} pending order ab complete ho sakte hain (Orders me dekhein)`:''))}catch(x){toast(x.message,1)}};
 }
 
 
@@ -821,11 +829,11 @@ function baq(){
 function sell(){
   M(`<h2>Sell (In-Store)</h2><div class="pos"><div><div class="bar"><input id="sq" placeholder="Search perfume..." style="width:100%"></div><div class="pp" id="pp"></div></div>
   <div class="panel" style="align-self:start"><h2 style="font-size:20px">Bill</h2><div id="bl"></div></div></div>`);
-  const fill=()=>{const q=$('#sq').value.toLowerCase();$('#pp').innerHTML=D.products.filter(p=>p.name.toLowerCase().includes(q)).map(p=>`<div class="it"><b>${esc(p.name)}</b>${p.variants.map(v=>`<button ${v.stock<=0?'disabled':''} data-a="${p.id}|${esc(v.size)}">${esc(v.size)} · ${rs(v.price-Math.round(v.price*Math.max(v.discount,D.settings.globalDiscount.pct)/100))}<br><small class="mut">stock ${v.stock}</small></button>`).join('')}</div>`).join('')};
+  const fill=()=>{const q=$('#sq').value.toLowerCase();$('#pp').innerHTML=D.products.filter(p=>p.name.toLowerCase().includes(q)).map(p=>`<div class="it"><b>${esc(p.name)}</b>${p.variants.map(v=>`<button ${v.stock<=0?'class="oos"':''} data-a="${p.id}|${esc(v.size)}">${esc(v.size)} · ${rs(v.price-Math.round(v.price*Math.max(v.discount,D.settings.globalDiscount.pct)/100))}<br><small class="mut">${v.stock>0?'stock '+v.stock:'stock 0 · order le sakte hain'}</small></button>`).join('')}</div>`).join('')};
   fill();$('#sq').oninput=fill;
   $('#pp').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const[pid,size]=b.dataset.a.split('|');
     const p=D.products.find(x=>x.id===pid),v=p.variants.find(x=>x.size===size);const l=bill.find(x=>x.pid===pid&&x.size===size);
-    if(l){if(l.qty<v.stock)l.qty++}else bill.push({pid,size,qty:1});drawBill()};
+    if(l){if(l.qty<50)l.qty++}else bill.push({pid,size,qty:1});drawBill()};
   drawBill();
 }
 let CF={ud:false,adv:'',call:false,name:'',phone:'',city:'',address:'',dc:'',pay:'COD',paid:false,wn:'',wp:'',wpm:'Cash'};
@@ -833,6 +841,7 @@ function drawBill(){
   const g=D.settings.globalDiscount.pct;
   const L=bill.map(b=>{const p=D.products.find(x=>x.id===b.pid),v=p.variants.find(x=>x.size===b.size);const pct=Math.max(v.discount,g);const unit=Math.round(v.price*(1-pct/100));return{...b,p,v,unit}});
   const sub=L.reduce((s,l)=>s+l.unit*l.qty,0);
+  const anyBack=L.some(l=>l.qty>l.v.stock);
   const dcv=()=>CF.call?Math.max(0,Math.min(5000,Math.round(+CF.dc)||0)):0;
   const tot=()=>Math.max(0,sub-(window._bd||0))+dcv();const advv=()=>CF.ud?Math.max(0,Math.round(+CF.adv)||0):0;
   const cust=CF.call?`<div class="sec" style="margin:6px 0"><div class="g2"><label>Customer name *<input id="cn" value="${esc(CF.name)}"></label><label>Phone *<input id="cp" type="tel" inputmode="tel" value="${esc(CF.phone)}"></label></div>
@@ -842,8 +851,9 @@ function drawBill(){
    ${CF.pay!=='COD'?`<label style="flex-direction:row;display:flex;gap:8px;align-items:center"><input type="checkbox" id="cpd" style="width:20px;height:20px" ${CF.paid?'checked':''}>Payment mil gayi</label>`:''}</div>`
    :`<div class="g2"><label>Customer name<input id="bn" placeholder="Walk-in" value="${esc(CF.wn)}"></label><label>Phone<input id="bp" value="${esc(CF.wp)}"></label></div>
    <label style="margin:6px 0">Payment<select id="bpm">${['Cash','Card','Bank Transfer','Easypaisa','JazzCash'].map(x=>`<option ${CF.wpm===x?'selected':''}>${x}</option>`).join('')}</select></label>`;
-  $('#bl').innerHTML=L.length?`${L.map((l,i)=>`<div class="row" style="align-items:center"><span style="color:var(--ink)">${esc(l.p.name)} ${esc(l.size)}<br><small>${rs(l.unit)}</small></span>
+  $('#bl').innerHTML=L.length?`${L.map((l,i)=>`<div class="row" style="align-items:center"><span style="color:var(--ink)">${esc(l.p.name)} ${esc(l.size)}<br><small>${rs(l.unit)}</small>${l.qty>l.v.stock?`<br><small class="low">⏳ ${l.qty-Math.max(0,l.v.stock)} maal abhi stock me nahi</small>`:''}</span>
    <span><button class="btn g s" data-m="${i}">−</button> ${l.qty} <button class="btn g s" data-pl="${i}">+</button> <b style="color:var(--ink)">${rs(l.unit*l.qty)}</b></span></div>`).join('')}
+   ${anyBack?`<div class="sec bq" style="margin:6px 0"><b>⏳ Kuch maal stock me nahi</b><div class="mut">Ye order <b>pending</b> rahega aur kam maal Requirement list me khud chala jayega. Customer ka naam aur phone zaroori hai.</div></div>`:''}
    <div class="row"><span>Subtotal</span><span>${rs(sub)}</span></div>
    <label style="margin:6px 0">Extra discount (Rs.)<input id="bd" type="number" min="0" value="${window._bd||0}"></label>
    <label style="flex-direction:row;display:flex;gap:8px;align-items:center;margin:6px 0;font-weight:600"><input type="checkbox" id="ccall" style="width:20px;height:20px;accent-color:var(--gold)" ${CF.call?'checked':''}>📞 Call / Delivery order (DC ke saath)</label>
@@ -853,7 +863,7 @@ function drawBill(){
    ${CF.call?`<div class="row"><span>Delivery charges</span><span id="bdc">${rs(dcv())}</span></div>`:''}
    <div class="row t"><span>Total</span><span id="bt">${rs(tot())}</span></div>
    ${CF.ud?`<div class="row"><span>Baqaya (udhaar)</span><span id="bbq" class="low">${rs(Math.max(0,tot()-advv()))}</span></div>`:''}
-   <button class="btn" id="bs" style="width:100%;margin-top:8px">${CF.call?'Order banao (delivery)':'Complete Sale'}</button> <button class="btn g" id="bc" style="width:100%;margin-top:6px">Clear</button>`:'<span class="mut">Tap a size to add it to the bill.</span>';
+   <button class="btn" id="bs" style="width:100%;margin-top:8px">${anyBack?'Pending order banao':CF.call?'Order banao (delivery)':'Complete Sale'}</button> <button class="btn g" id="bc" style="width:100%;margin-top:6px">Clear</button>`:'<span class="mut">Tap a size to add it to the bill.</span>';
   const upd=()=>{const t=$('#bt');if(t)t.textContent=rs(tot());const q=$('#bbq');if(q)q.textContent=rs(Math.max(0,tot()-advv()));const d=$('#bdc');if(d)d.textContent=rs(dcv())};
   const d=$('#bd');if(d)d.oninput=()=>{window._bd=Math.max(0,+d.value||0);upd()};
   $('#bl').oninput=e=>{const i=e.target.id,v=e.target.value;
@@ -867,15 +877,16 @@ function drawBill(){
   $('#bl').onclick=async e=>{
     const m=e.target.closest('[data-m]'),pl=e.target.closest('[data-pl]');
     if(m){const l=bill[+m.dataset.m];l.qty--;if(l.qty<1)bill.splice(+m.dataset.m,1);return drawBill()}
-    if(pl){const l=L[+pl.dataset.pl];if(l.qty<l.v.stock)bill[+pl.dataset.pl].qty++;return drawBill()}
+    if(pl){const l=L[+pl.dataset.pl];if(l.qty<50)bill[+pl.dataset.pl].qty++;return drawBill()}
     if(e.target.id==='bc'){bill=[];window._bd=0;CF={ud:false,adv:'',call:false,name:'',phone:'',city:'',address:'',dc:'',pay:'COD',paid:false,wn:'',wp:'',wpm:'Cash'};return drawBill()}
     if(e.target.id==='bs'){
       const body=CF.call?{udhaar:CF.ud,advance:advv(),items:bill,discount:window._bd||0,call:true,customerName:CF.name,customerPhone:CF.phone,address:CF.address,city:CF.city,dc:dcv(),payment:CF.pay,paid:CF.paid}
         :{udhaar:CF.ud,advance:advv(),items:bill,discount:window._bd||0,customerName:CF.wn,customerPhone:CF.wp,payment:CF.wpm};
+      if(anyBack&&!CF.call){if(!CF.wn.trim()||CF.wp.replace(/\D/g,'').length<10)return toast('Jis perfume ka stock nahi, uske liye customer ka naam aur phone likhein',1)}
       if(CF.ud&&!CF.call){if(!CF.wn.trim())return toast('Udhaar ke liye customer ka naam likhein',1);if(CF.wp.replace(/\D/g,'').length<10)return toast('Udhaar ke liye sahi phone number likhein',1)}
       if(CF.call){if(!CF.name.trim())return toast('Customer ka naam likhein',1);if(CF.phone.replace(/\D/g,'').length<10)return toast('Sahi phone number likhein',1);if(!CF.address.trim())return toast('Address likhein',1)}
       try{const r=await api('admin/sale','POST',body);
-        bill=[];window._bd=0;CF={ud:false,adv:'',call:false,name:'',phone:'',city:'',address:'',dc:'',pay:'COD',paid:false,wn:'',wp:'',wpm:'Cash'};await load();saleDone(r.order)}catch(x){toast(x.message,1)}
+        bill=[];window._bd=0;CF={ud:false,adv:'',call:false,name:'',phone:'',city:'',address:'',dc:'',pay:'COD',paid:false,wn:'',wp:'',wpm:'Cash'};await load();saleDone(r.order);if(r.order.backorder)toast('Order pending hai, kam maal Requirement list me add ho gaya')}catch(x){toast(x.message,1)}
     }
   };
 }
